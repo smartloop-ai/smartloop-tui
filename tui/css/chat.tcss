@@ -1,0 +1,170 @@
+ Screen {
+        background: #0f0a1a;
+    }
+
+    #chat-log {
+        height: 1fr;
+        padding: 1 2;
+        background: #0f0a1a;
+    }
+
+    #prompt-wrapper {
+        dock: bottom;
+        height: auto;
+        max-height: 24;
+        padding: 1 2;
+        background: transparent;
+    }
+
+    #prompt-container {
+        height: auto;
+        padding: 1;
+        align: left top;
+        border-top: none;
+        border-right: none;
+        border-bottom: none;
+        background: #1c1528;
+        border-left:#ec4899;
+    }
+
+    #prompt-box {
+        height: 3;
+        max-height: 3;
+        padding-left: 1;
+        padding-bottom: 1;
+        border: none;
+        background: transparent;
+        color: #e2d9f3;
+    }
+
+    #prompt-box:focus {
+        border: none;
+    }
+
+    #status-bar {
+        height: auto;
+        background: transparent;
+        color: #6b5b7b;
+        padding: 1 0;
+    }
+
+    #info-bar {
+        height: auto;
+        background: transparent;
+        layout: horizontal;
+        padding: 1 0 0 0;
+    }
+
+    .badge-group {
+        width: auto;
+        height: 1;
+        margin: 0 1 0 0;
+        padding: 0 1;
+        background: #272036;
+        layout: horizontal;
+        align: left middle;
+    }
+
+    .badge-icon {
+        width: auto;
+        height: 1;
+        margin: 0 1 0 0;
+        background: transparent;
+    }
+
+    .badge-text {
+        width: auto;
+        height: 1;
+        background: transparent;
+    }
+
+    #shortcut-bar {
+        height: 1;
+        background: transparent;
+        color: #6b5b7b;
+        padding: 0 2;
+        layout: horizontal;
+    }
+
+    #shortcut-text {
+        width: auto;
+        height: 1;
+    }
+
+    #cost-badge {
+        width: 1fr;
+        height: 1;
+        text-align: right;
+        color: #6b5b7b;
+    }
+
+    .badge-group.green .badge-icon,
+    .badge-group.green .badge-text {
+        color: #34d399;
+    }
+
+    .badge-group.pink .badge-icon,
+    .badge-group.pink .badge-text {
+        color: #f9a8d4;
+    }
+
+    .badge-group.muted .badge-icon,
+    .badge-group.muted .badge-text {
+        color: #6b5b7b;
+    }
+
+    .badge-group.red .badge-icon,
+    .badge-group.red .badge-text {
+        color: #f87171;
+    }
+
+    .user-msg {
+        margin: 1 0 0 0;
+        padding: 1 2;
+        background: #1c1528;
+        border: round #272036;
+        color: #e2d9f3;
+    }
+
+    .assistant-msg {
+        margin: 0 0 1 0;
+        padding: 1 2;
+        background: #191225;
+        color: #d1c4e9;
+        link-color: #ec4899;
+        link-style: underline;
+        link-color-hover: #f9a8d4;
+        link-style-hover: bold underline;
+        link-background-hover: #272036;
+    }
+
+    .system-msg {
+        margin: 1 0;
+        color: #6b5b7b;
+    }
+
+    .metrics-msg {
+        color: #4a3d5c;
+        margin: 0 0 1 0;
+    }
+
+    .bootstrap-status {
+        margin: 0 0;
+        color: #6b5b7b;
+    }
+
+    .bootstrap-progress {
+        margin: 1 0 0 0;
+        color: #6b5b7b;
+    }
+
+    ToastRack {
+        align: right top;
+    }
+
+    Toast {
+        width: auto;
+        background: #1c1528;
+        color: #e2d9f3;
+        border-left: outer #ec4899;
+    }

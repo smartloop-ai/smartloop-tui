@@ -1,0 +1,23 @@
+#!/bin/sh
+# Smartloop installer bootstrap
+# Downloads and runs the full installer under bash.
+#
+# Usage:
+#   curl -fsSL https://smartloop.ai/install | sh
+#
+# When piped to sh (often dash on Debian/Ubuntu), the shell reads stdin in
+# large blocks.  A self-re-exec trick like `exec bash -c "$(cat)"` loses
+# whatever dash already consumed, producing a truncated script and cryptic
+# parse errors.  Instead we download the real installer to a temp file and
+# exec bash on it — simple, portable, and reliable.
+set -eu
+
+command -v curl  >/dev/null 2>&1 || { echo "Error: curl is required"  >&2; exit 1; }
+command -v bash  >/dev/null 2>&1 || { echo "Error: bash is required"  >&2; exit 1; }
+command -v mktemp >/dev/null 2>&1 || { echo "Error: mktemp is required" >&2; exit 1; }
+
+_f="$(mktemp)" || { echo "Error: cannot create temp file" >&2; exit 1; }
+trap 'rm -f "$_f"' EXIT
+
+curl -fsSL "https://raw.githubusercontent.com/smartloop-ai/smartloop/main/install.sh" -o "$_f"
+exec bash "$_f" "$@"

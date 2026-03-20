@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "slp"
+dynamic = ["version"]
+description = "Smartloop SLM framework for inferencing and tuning models on edge devices"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic==2.12.5",
+    "pydantic-settings>=2.10.1",
+    "rich>=13.7.0",
+    "prompt_toolkit>=3.0.47",
+    "cryptography>=43.0.0",
+    "textual>=0.75.0",
+    "httpx>=0.27.0",
+    "tqdm>=4.66.0",
+    "prettytable==3.16.0",
+    "smartloop==1.0.2",
+]
+
+[project.scripts]
+slp = "commands.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["commands*", "tui*"]
+
+[tool.setuptools.package-data]
+tui = ["css/*.tcss", "css/*.css"]
+
+[tool.setuptools.dynamic]
+version = {attr = "smartloop.__version__"}

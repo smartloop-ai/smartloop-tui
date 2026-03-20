@@ -1,0 +1,208 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Import Apple certificate
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          echo -n "$APPLE_CERTIFICATE" | base64 --decode -o $CERTIFICATE_PATH
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          security import $CERTIFICATE_PATH -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+      - name: Build and pack
+        run: make pack
+
+      - name: Verify build
+        run: dist/slp/slp --version
+
+      - name: Sign
+        env:
+          APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+        run: make sign
+
+      - name: Notarize
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: make notarize
+
+      - name: Archive
+        run: make archive
+
+      - name: Compute SHA256
+        run: shasum -a 256 slp.tar.gz | tee darwin-arm64-sha256.txt
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: darwin-arm64-slp
+          path: slp.tar.gz
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install CUDA toolkit
+        run: |
+          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+          sudo dpkg -i cuda-keyring_1.1-1_all.deb
+          sudo apt-get update
+          sudo apt-get install -y cuda-toolkit-12-6
+
+      - name: Set CUDA environment
+        run: |
+          echo "/usr/local/cuda-12.6/bin" >> $GITHUB_PATH
+          echo "LD_LIBRARY_PATH=/usr/local/cuda-12.6/lib64:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "CUDA_HOME=/usr/local/cuda-12.6" >> $GITHUB_ENV
+
+      - name: Build and pack
+        run: make pack CUDA=1
+
+      - name: Verify build
+        run: |
+          test -f dist/slp/slp && echo "Binary exists: dist/slp/slp"
+          ls -lh dist/slp/slp
+
+      - name: Archive
+        run: make archive
+
+      - name: Split archive into parts
+        run: |
+          split -b 1900m slp.tar.gz linux-amd64-slp.tar.gz.part-
+          ls -lh linux-amd64-slp.tar.gz.part-*
+
+      - name: Compute SHA256
+        run: sha256sum slp.tar.gz | tee linux-amd64-sha256.txt
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-amd64-slp
+          path: |
+            linux-amd64-slp.tar.gz.part-*
+            linux-amd64-sha256.txt
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install CUDA toolkit
+        uses: Jimver/cuda-toolkit@v0.2.21
+        with:
+          cuda: '12.6.0'
+
+      - name: Build and pack
+        run: make pack CUDA=1
+
+      - name: Verify build
+        run: |
+          Test-Path dist\slp\slp.exe
+          Get-Item dist\slp\slp.exe
+        shell: pwsh
+
+      - name: Archive
+        run: Compress-Archive -Path dist\slp -DestinationPath windows-amd64-slp.zip
+        shell: pwsh
+
+      - name: Compute SHA256
+        run: (Get-FileHash windows-amd64-slp.zip -Algorithm SHA256).Hash
+        shell: pwsh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-amd64-slp
+          path: windows-amd64-slp.zip
+
+  release:
+    needs: [build-macos, build-linux, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: darwin-arm64-slp
+          path: artifacts/darwin-arm64
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-amd64-slp
+          path: artifacts/linux-amd64
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-amd64-slp
+          path: artifacts/windows-amd64
+
+      - name: Prepare release assets
+        run: |
+          mv artifacts/darwin-arm64/slp.tar.gz darwin-arm64-slp.tar.gz
+          mv artifacts/linux-amd64/linux-amd64-slp.tar.gz.part-* .
+          mv artifacts/linux-amd64/linux-amd64-sha256.txt .
+          mv artifacts/windows-amd64/windows-amd64-slp.zip .
+          ls -lh darwin-arm64-slp.tar.gz linux-amd64-slp.tar.gz.part-* windows-amd64-slp.zip
+
+      - name: Generate checksums
+        run: |
+          sha256sum darwin-arm64-slp.tar.gz linux-amd64-slp.tar.gz.part-* windows-amd64-slp.zip > checksums-sha256.txt
+          cat checksums-sha256.txt
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes \
+            darwin-arm64-slp.tar.gz \
+            linux-amd64-slp.tar.gz.part-* \
+            windows-amd64-slp.zip \
+            checksums-sha256.txt
