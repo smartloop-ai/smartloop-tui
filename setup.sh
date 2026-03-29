@@ -35,7 +35,7 @@ main() {
     else
         install_smartloop
         printf "\n\033[1;32mSmartloop v%s installed successfully!\033[0m\n" "$VERSION"
-        printf "Run \033[1mslp --help\033[0m to get started.\n"
+        printf "Run \033[1mslp\033[0m to get started.\n"
 
         if [[ "$(uname -s)" == "Linux" ]]; then
             printf "\n"

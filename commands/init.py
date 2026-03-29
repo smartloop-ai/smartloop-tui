@@ -3,15 +3,53 @@
 from __future__ import annotations
 
 import json
+import sys
 
 import requests
 from requests.exceptions import RequestException
-from tqdm import tqdm
 
 from smartloop.constants import SLP_PRIMARY
 
 from commands.base import Command
 from commands.console import console
+
+# ANSI escape helpers for the block-style progress bar
+_PINK = "\033[38;5;205m"
+_DIM = "\033[0;2m"
+_NC = "\033[0m"
+
+_BAR_WIDTH = 40
+
+
+def _format_bytes(n: int) -> str:
+    if n >= 1_073_741_824:
+        return f"{n / 1_073_741_824:.1f} GB"
+    if n >= 1_048_576:
+        return f"{n / 1_048_576:.1f} MB"
+    return f"{n / 1024:.0f} KB"
+
+
+def _render_progress(filename: str, downloaded: int, total: int) -> None:
+    """Print an in-place block progress bar matching the TUI style."""
+    if total <= 0:
+        return
+    ratio = min(downloaded / total, 1.0)
+    pct = ratio * 100
+    filled = int(ratio * _BAR_WIDTH)
+    empty = _BAR_WIDTH - filled
+
+    bar = f"{_PINK}{'█' * filled}{_DIM}{'░' * empty}{_NC}"
+    label = f"{_DIM}Downloading {filename}  {_format_bytes(downloaded)} / {_format_bytes(total)}{_NC}"
+
+    # \033[K clears rest of line to prevent old text bleeding through
+    sys.stdout.write(f"\r\033[K{label}\n\r\033[K{bar} {_PINK}{pct:3.0f}%{_NC}\033[1A\r")
+    sys.stdout.flush()
+
+
+def _clear_progress() -> None:
+    """Clear the two-line progress display."""
+    sys.stdout.write("\r\033[K\n\r\033[K\033[1A\r")
+    sys.stdout.flush()
 
 
 class InitCommand(Command):
@@ -47,7 +85,6 @@ class InitCommand(Command):
             self._init()
             return
 
-        console.print("[cyan]No developer token found. Setting up with the default base model...[/cyan]")
         self._bootstrap()
 
     def _init(self) -> None:
@@ -81,7 +118,16 @@ class InitCommand(Command):
             console.print(f"[red]API Error: {e}[/red]")
 
     def _consume_sse_stream(self, resp: requests.Response) -> None:
-        """Read an SSE response and render download progress / status messages."""
+        """Read an SSE response and render download progress / status messages.
+
+        The server sends typed SSE frames::
+
+            event: progress
+            data: {"filename": "...", "downloaded": 123, "total": 456}
+
+            event: complete
+            data: {"model_name": "...", "project": {...}}
+        """
         if not resp.ok:
             try:
                 detail = resp.json().get("detail", resp.text)
@@ -90,11 +136,19 @@ class InitCommand(Command):
             console.print(f"[red]{detail}[/red]")
             return
 
-        progress_bar = None
+        showing_progress = False
+        current_event_type: str | None = None
+
         for raw in resp.iter_lines():
             if not raw:
+                current_event_type = None
                 continue
             line = raw.decode("utf-8") if isinstance(raw, bytes) else raw
+
+            if line.startswith("event:"):
+                current_event_type = line[6:].strip()
+                continue
+
             if not line.startswith("data:"):
                 continue
             try:
@@ -102,44 +156,51 @@ class InitCommand(Command):
             except json.JSONDecodeError:
                 continue
 
+            event_type = current_event_type or ""
             status = data.get("status", "")
-            total = data.get("total", 0)
-            downloaded = data.get("downloaded", 0)
-            filename = data.get("filename", "")
             msg = data.get("message", "")
 
-            if total and downloaded is not None:
-                if progress_bar is None:
-                    progress_bar = tqdm(
-                        total=total, unit="B", unit_scale=True,
-                        unit_divisor=1024, desc=filename or "Downloading",
-                        dynamic_ncols=True,
-                    )
-                elif filename and progress_bar.desc != filename:
-                    progress_bar.set_description(filename)
-                progress_bar.n = downloaded
-                progress_bar.refresh()
-            elif status == "completed":
-                if progress_bar is not None:
-                    progress_bar.n = progress_bar.total
-                    progress_bar.refresh()
-                    progress_bar.close()
-                    progress_bar = None
+            # Progress event — download bytes
+            if "downloaded" in data and "total" in data:
+                total = data["total"]
+                downloaded = data["downloaded"]
+                filename = data.get("filename", "model")
+                if total:
+                    showing_progress = True
+                    _render_progress(filename, downloaded, total)
+
+            # Complete event
+            elif event_type == "complete" or status == "completed":
+                if showing_progress:
+                    _clear_progress()
+                    showing_progress = False
                 console.print(f"[cyan][:rocket:] {msg}[/cyan]")
+
+            # Project created
             elif status == "project_created":
                 project = data.get("project", {})
                 console.print(
                     f"[green][:white_check_mark:] Project created: "
                     f"{project.get('name', '')} (id={project.get('id', '')})[/green]"
                 )
-            elif status == "error":
-                if progress_bar is not None:
-                    progress_bar.close()
-                    progress_bar = None
+
+            # Error
+            elif event_type == "error" or status == "error":
+                if showing_progress:
+                    _clear_progress()
+                    showing_progress = False
                 console.print(f"[red]{msg}[/red]")
+
+            # Status messages — skip "Downloading..." since the progress bar
+            # already shows that info
             else:
-                if msg:
+                if msg and not msg.lower().startswith("downloading"):
+                    if showing_progress:
+                        _clear_progress()
+                        showing_progress = False
                     console.print(f"[dim]{msg}[/dim]")
 
-        if progress_bar is not None:
-            progress_bar.close()
+            current_event_type = None
+
+        if showing_progress:
+            _clear_progress()

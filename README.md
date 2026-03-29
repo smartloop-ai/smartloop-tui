@@ -18,6 +18,12 @@
 
 ### Installation
 
+Copy and paste the following script to your terminal to get started:
+
+```bash
+curl -fsSL https://smartloop.ai/install | bash
+```
+
 Install using [Homebrew](https://brew.sh) (recommended):
 
 **macOS**
@@ -40,11 +46,7 @@ brew install smartloop
 > [!TIP]
 > To upgrade: `brew update && brew upgrade smartloop`
 
-**Alternative: Install via curl**
 
-```bash
-curl -fsSL https://smartloop.ai/install | bash
-```
 
 **From source:**
 
@@ -127,9 +129,10 @@ systemctl --user status smartloop
 
 | Requirement | Description | Required |
 |-------------|-------------|----------|
-| OS | macOS (Apple Silicon) or Linux (x86_64) | Yes |
+| OS | macOS (Apple Silicon) or Linux (x86_64) or WSL | Yes |
 | Python | 3.11+ | Yes |
-| CUDA | 12.6+ (NVIDIA GPU acceleration) | No |
+| CUDA | 12.6+ (NVIDIA GPU acceleration) Metal | No |
+| Metal| Bespoke on mac | yes |
 
 ### Troubleshooting
 

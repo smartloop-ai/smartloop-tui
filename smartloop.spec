@@ -3,14 +3,24 @@ import sys
 import platform
 import site
 from pathlib import Path
-from PyInstaller.utils.hooks import copy_metadata
+from PyInstaller.utils.hooks import copy_metadata, collect_all
 
 datas = []
 binaries = []
+hiddenimports = []
+
+# Collect all smartloop submodules, data files, and binaries
+_tmp_ret = collect_all('smartloop')
+datas += _tmp_ret[0]
+binaries += _tmp_ret[1]
+hiddenimports += _tmp_ret[2]
 
 # Include package metadata required at runtime (importlib.metadata lookups)
 for pkg in ['docling', 'docling-core', 'docling-ibm-models', 'docling-parse']:
-    datas += copy_metadata(pkg)
+    try:
+        datas += copy_metadata(pkg)
+    except Exception:
+        pass
 
 # Include docling_parse resource directories (fonts, encodings, glyphs for PDF parsing)
 for sp in site.getsitepackages():
@@ -122,7 +132,7 @@ a = Analysis(
     pathex=[],
     binaries=binaries,
     datas=datas,
-    hiddenimports=[
+    hiddenimports=hiddenimports + [
         'certifi',
         'llama_cpp',
         'llama_cpp.llama_cpp',
@@ -173,7 +183,7 @@ exe = EXE(
     name='slp',
     debug=False,
     bootloader_ignore_signals=False,
-    strip=True,
+    strip=sys.platform != 'win32',
     upx=True,
     console=True,
     disable_windowed_traceback=False,
@@ -186,7 +196,7 @@ coll = COLLECT(
     exe,
     a.binaries,
     a.datas,
-    strip=True,
+    strip=sys.platform != 'win32',
     upx=True,
     upx_exclude=[],
     name='slp',
