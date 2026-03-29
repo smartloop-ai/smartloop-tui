@@ -20,7 +20,7 @@ from tui.commands import (
     Document,
     ModelInfo,
     Project,
-    Rule,
+    Skill,
     Attachment,
     Auth,
 )
@@ -39,7 +39,7 @@ class SLPChat(
     MCP,
     Document,
     Project,
-    Rule,
+    Skill,
     ModelInfo,
     Attachment,
     Auth,
@@ -253,6 +253,7 @@ class SLPChat(
             self._show_help()
             return
 
+
         if text.lower().startswith("/attach "):
             filepath = text[8:].strip()
             self._upload_attachment(filepath)
@@ -266,8 +267,8 @@ class SLPChat(
             self._handle_document_command(text[9:].strip())
             return
 
-        if text.lower().startswith("/rule"):
-            self._handle_rule_command(text[5:].strip())
+        if text.lower().startswith("/skill"):
+            self._handle_skill_command(text[6:].strip())
             return
 
         if text.lower() == "/model":

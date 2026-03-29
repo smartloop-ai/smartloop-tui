@@ -18,13 +18,14 @@ from smartloop.server import read_port_file
 from commands.base import Command
 from commands.init import InitCommand
 from commands.document import DocumentCommand
-from commands.rule import RuleCommand
+from commands.skill import SkillCommand
 from commands.model import ModelCommand
 from commands.run import RunCommand
 from commands.token import TokenCommand
 from commands.mcp import McpCommand
 from commands.server import ServerCommand
 from commands.projects import ProjectsCommand
+
 
 # Use certifi CA bundle for SSL verification (required for PyInstaller builds
 # where system certificates are not available)
@@ -46,7 +47,7 @@ def load_file_content(filepath: str) -> str:
 class CommandHandler(
     InitCommand,
     DocumentCommand,
-    RuleCommand,
+    SkillCommand,
     ModelCommand,
     RunCommand,
     TokenCommand,
@@ -84,7 +85,7 @@ class CommandHandler(
         """Resolve and invoke the correct command handler."""
         from commands.init import InitCommand
         from commands.document import DocumentCommand
-        from commands.rule import RuleCommand
+        from commands.skill import SkillCommand
         from commands.model import ModelCommand
         from commands.run import RunCommand
         from commands.token import TokenCommand
@@ -95,7 +96,7 @@ class CommandHandler(
         _COMMAND_MAP = {
             "run": RunCommand,
             "init": InitCommand,
-            "rules": RuleCommand,
+            "skills": SkillCommand,
             "add": DocumentCommand,
             "delete": DocumentCommand,
             "status": ModelCommand,
@@ -148,9 +149,9 @@ def main():
     add_parser = subparsers.add_parser("add", help="Add a new source")
     add_parser.add_argument("file_path", help="File path or URL for the new source")
 
-    # Add rule command
-    rule_parser = subparsers.add_parser("rules", help="Add a rule to the current project")
-    rule_parser.add_argument("--file", "-f", help="Read rule from a file")
+    # Add skill command
+    skill_parser = subparsers.add_parser("skills", help="Add a skill to the current project")
+    skill_parser.add_argument("--file", "-f", help="Read skill from a file")
 
     # Delete document command
     delete_parser = subparsers.add_parser("delete", help="Delete a document by ID")
@@ -196,14 +197,14 @@ def main():
     # Server management commands
     server_parser = subparsers.add_parser("server", help="Server management commands")
     server_subparsers = server_parser.add_subparsers(dest="server_command", help="Server commands")
-    start_parser = server_subparsers.add_parser("start", help="Start the API server in background")
-    start_parser.add_argument("--debug", "-d", action="store_true", help="Enable debug mode (load base model + LoRA adapters)")
-    start_parser.add_argument("--no-service", action="store_true", help="Disable auto-restart on crash")
+    start_server_parser = server_subparsers.add_parser("start", help="Start the API server in background")
+    start_server_parser.add_argument("--debug", "-d", action="store_true", help="Enable debug mode (load base model + LoRA adapters)")
+    start_server_parser.add_argument("--no-service", action="store_true", help="Disable auto-restart on crash")
     server_subparsers.add_parser("stop", help="Stop the background API server")
     server_subparsers.add_parser("status", help="Show server status")
-    restart_parser = server_subparsers.add_parser("restart", help="Restart the API server")
-    restart_parser.add_argument("--debug", "-d", action="store_true", help="Enable debug mode (load base model + LoRA adapters)")
-    restart_parser.add_argument("--no-service", action="store_true", help="Disable auto-restart on crash")
+    restart_server_parser = server_subparsers.add_parser("restart", help="Restart the API server")
+    restart_server_parser.add_argument("--debug", "-d", action="store_true", help="Enable debug mode (load base model + LoRA adapters)")
+    restart_server_parser.add_argument("--no-service", action="store_true", help="Disable auto-restart on crash")
 
     # Token management commands
     token_parser = subparsers.add_parser("token", help="Manage your developer token")

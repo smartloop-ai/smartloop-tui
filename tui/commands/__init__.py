@@ -4,7 +4,7 @@ from .mcp import MCP
 from .document import Document
 from .model_info import ModelInfo
 from .project import Project
-from .rule import Rule
+from .skill import Skill
 from .attachment import Attachment
 from .auth import Auth
 
@@ -13,7 +13,7 @@ __all__ = [
     "Document",
     "ModelInfo",
     "Project",
-    "Rule",
+    "Skill",
     "Attachment",
     "Auth",
 ]
