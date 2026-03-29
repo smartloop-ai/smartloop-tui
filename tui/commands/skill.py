@@ -72,7 +72,7 @@ class Skill:
                 self._append_system("No skills are set")
                 return
 
-            table = Table(style="#6b5b7b")
+            table = Table(style="#6b5b7b", show_lines=True)
             table.add_column("#", style="dim", width=3)
             table.add_column("Description")
             for i, s in enumerate(skills, 1):

@@ -45,13 +45,11 @@ class ChatLog:
         log = self.query_one("#chat-log", VerticalScroll)
         header = f"[bold #ec4899]{LOGO}[/bold #ec4899]\n[#4a3d5c]v{__version__}[/#4a3d5c]\n"
         log.mount(Static(header, classes="system-msg"))
-        from rich.box import HORIZONTALS
         commands_table = Table(
             show_header=True,
             header_style="#ec4899",
             border_style="#272036",
             style="#6b5b7b",
-            box=HORIZONTALS,
             expand=False,
             pad_edge=True,
             padding=(0, 1),
