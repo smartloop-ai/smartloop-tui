@@ -65,6 +65,11 @@ def get_skill_input() -> str:
     return get_editable_input()
 
 
+def get_skill_name_input() -> str:
+    """Prompt for a skill name."""
+    return prompt("Skill name: ").strip()
+
+
 def upload_asset_cli(filepath: str, host: str, port: int) -> str | None:
     """Upload a file as an asset and return its asset_id, or None on failure."""
     path = Path(filepath)

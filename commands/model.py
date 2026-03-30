@@ -1,10 +1,13 @@
-"""ModelCommand — ``status`` CLI command."""
+"""ModelCommand — ``status``, ``train``, and ``build`` CLI commands."""
 
 from __future__ import annotations
+
+import json
 
 import requests
 from prettytable import PrettyTable
 from requests.exceptions import RequestException
+from tqdm import tqdm
 
 from smartloop.server import is_server_running, read_pid_file
 
@@ -13,7 +16,7 @@ from commands.console import console
 
 
 class ModelCommand(Command):
-    """Handles the ``status`` CLI command."""
+    """Handles the ``status``, ``train``, and ``build`` CLI commands."""
 
     args: object
     host: str
@@ -83,3 +86,98 @@ class ModelCommand(Command):
             pass
 
         console.print(table)
+
+    def train(self) -> None:
+        """Fine-tune the model with LoRA on project documents."""
+        if not self._require_server():
+            return
+
+        project_id = self._resolve_project_id()
+        if not project_id:
+            console.print("[red]No active project. Run 'slp init' first.[/red]")
+            return
+
+        payload = {"mode": "train", "project_id": project_id}
+        self._stream_model_load(payload, desc="Training")
+
+    def build(self) -> None:
+        """Convert the model to GGUF format."""
+        if not self._require_server():
+            return
+
+        project_id = self._resolve_project_id()
+        if not project_id:
+            console.print("[red]No active project. Run 'slp init' first.[/red]")
+            return
+
+        payload = {"mode": "build", "project_id": project_id}
+        quantize = getattr(self.args, "quantize", None)
+        if quantize:
+            payload["quantize"] = quantize
+        self._stream_model_load(payload, desc="Building")
+
+    def _stream_model_load(self, payload: dict, desc: str = "Processing") -> None:
+        """POST to /v1/models/load and stream SSE progress."""
+        try:
+            with requests.post(
+                f"{self._base_url()}/v1/models/load",
+                json=payload,
+                stream=True,
+                timeout=1800,
+            ) as resp:
+                if not resp.ok:
+                    try:
+                        detail = resp.json().get("detail", resp.text)
+                    except Exception:
+                        detail = resp.text
+                    console.print(f"[red]{detail}[/red]")
+                    return
+
+                progress_bar = None
+                for raw in resp.iter_lines():
+                    if not raw:
+                        continue
+                    line = raw.decode("utf-8") if isinstance(raw, bytes) else raw
+                    if not line.startswith("data:"):
+                        continue
+                    try:
+                        data = json.loads(line[5:].strip())
+                    except json.JSONDecodeError:
+                        continue
+
+                    stage = data.get("stage", "")
+                    current = data.get("current", 0)
+                    total = data.get("total", 0)
+                    message = data.get("message", "")
+
+                    if total and current is not None:
+                        if progress_bar is None:
+                            progress_bar = tqdm(
+                                total=total, desc=stage or desc,
+                                dynamic_ncols=True,
+                            )
+                        elif stage and progress_bar.desc != stage:
+                            progress_bar.reset(total=total)
+                            progress_bar.set_description(stage)
+                        progress_bar.n = current
+                        progress_bar.refresh()
+                    elif stage == "complete" or stage == "completed":
+                        if progress_bar is not None:
+                            progress_bar.n = progress_bar.total
+                            progress_bar.refresh()
+                            progress_bar.close()
+                            progress_bar = None
+                        console.print(f"[cyan][:rocket:] {message or f'{desc} complete'}[/cyan]")
+                    elif stage == "error":
+                        if progress_bar is not None:
+                            progress_bar.close()
+                            progress_bar = None
+                        console.print(f"[red]{message}[/red]")
+                    else:
+                        if message:
+                            console.print(f"[dim]{message}[/dim]")
+
+                if progress_bar is not None:
+                    progress_bar.close()
+        except RequestException as e:
+            console.print(f"[red]API Error: {e}[/red]")

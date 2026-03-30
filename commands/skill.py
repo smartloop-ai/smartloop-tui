@@ -9,7 +9,7 @@ from smartloop.constants import SLP_PRIMARY
 
 from commands.base import Command
 from commands.console import console
-from commands.helpers import load_file_content, get_skill_input
+from commands.helpers import load_file_content, get_skill_input, get_skill_name_input
 
 
 class SkillCommand(Command):
@@ -32,10 +32,20 @@ class SkillCommand(Command):
                 return
 
         if skill_text and skill_text.strip():
+            name = getattr(self.args, "name", None)
+            if not name:
+                try:
+                    name = get_skill_name_input()
+                except (KeyboardInterrupt, EOFError):
+                    console.print("\n[yellow]Skill input cancelled[/yellow]")
+                    return
+            if not name or not name.strip():
+                console.print("[red]Skill name is required[/red]")
+                return
             try:
                 resp = requests.post(
-                    f"{self._base_url()}/v1/projects/{self.project_id}/skills/register",
-                    json={"content": skill_text},
+                    f"{self._base_url()}/v1/projects/{self.project_id}/skills",
+                    json={"name": name.strip(), "content": skill_text},
                     timeout=30,
                 )
                 resp.raise_for_status()

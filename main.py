@@ -100,6 +100,8 @@ class CommandHandler(
             "add": DocumentCommand,
             "delete": DocumentCommand,
             "status": ModelCommand,
+            "train": ModelCommand,
+            "build": ModelCommand,
             "token": TokenCommand,
             "mcp": McpCommand,
             "server": ServerCommand,
@@ -151,6 +153,7 @@ def main():
 
     # Add skill command
     skill_parser = subparsers.add_parser("skills", help="Add a skill to the current project")
+    skill_parser.add_argument("--name", "-n", help="Skill name")
     skill_parser.add_argument("--file", "-f", help="Read skill from a file")
 
     # Delete document command
@@ -159,6 +162,13 @@ def main():
 
     # Status command
     subparsers.add_parser("status", help="Show project status")
+
+    # Train command
+    subparsers.add_parser("train", help="Fine-tune the model with LoRA on project documents")
+
+    # Build command
+    build_parser = subparsers.add_parser("build", help="Convert the model to GGUF format")
+    build_parser.add_argument("--quantize", "-q", help="Quantization type (e.g. q4_0, q8_0, f16)")
 
     # Run command
     run_parser = subparsers.add_parser("run", help="Run interactive chat with the model")

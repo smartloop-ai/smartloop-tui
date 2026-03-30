@@ -35,16 +35,23 @@ class Skill:
 
     @work(exclusive=True)
     async def _skill_add(self, skill_text: str) -> None:
-        """Add a skill to the project."""
+        """Add a skill to the project with an auto-generated name."""
         if not self.project_id:
             self._append_system("No project selected. Use /project add or /project list to switch to one.")
             return
         self._set_loading("Adding skill...")
         try:
             async with httpx.AsyncClient(timeout=30) as client:
+                # Fetch existing skills to generate the next name
+                list_resp = await client.get(
+                    f"{self.server_url}/v1/projects/{self.project_id}/skills",
+                )
+                count = len(list_resp.json().get("skills", [])) if list_resp.is_success else 0
+                name = f"skill_{count + 1}"
+
                 resp = await client.post(
-                    f"{self.server_url}/v1/projects/{self.project_id}/skills/register",
-                    json={"content": skill_text},
+                    f"{self.server_url}/v1/projects/{self.project_id}/skills",
+                    json={"name": name, "content": skill_text},
                 )
                 resp.raise_for_status()
                 self._append_system("New skill added")
