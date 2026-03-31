@@ -2,8 +2,9 @@
 set -euo pipefail
 
 VERSION="1.0.1"
-BASE_URL="https://storage.googleapis.com/smartloop-gcp-us-east-releases/${VERSION}"
-INSTALL_DIR="$HOME/.smartloop"
+BASE_URL="https://github.com/smartloop-ai/smartloop/releases/download/v${VERSION}"
+BASE_DIR="$HOME/.smartloop"
+INSTALL_DIR="${BASE_DIR}/${VERSION}"
 
 # Colors
 MUTED='\033[0;2m'
@@ -14,9 +15,8 @@ RED='\033[0;31m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-# Expected sha256 checksums
-DARWIN_ARM64_SHA256="64a7c3046fd27bcc35b5ef6d63985fafe19b14f15942d7c3ac6c13c980eb6a0e"
-LINUX_AMD64_SHA256="73570734d26e9422f4fe87de98d4a17ba94c3fd80937aed9ed8f8c0c275c628d"
+# SHA256 checksums — fetched from release at install time
+CHECKSUMS_FILE=""
 
 error() { echo -e "${RED}Error:${NC} $1" >&2; exit 1; }
 
@@ -26,9 +26,10 @@ detect_platform() {
     arch="$(uname -m)"
 
     case "$os" in
-        Darwin) OS="darwin" ;;
-        Linux)  OS="linux" ;;
-        *)      error "Unsupported OS: $os" ;;
+        Darwin)          OS="darwin" ;;
+        Linux)           OS="linux" ;;
+        MINGW*|MSYS*|CYGWIN*) OS="windows" ;;
+        *)               error "Unsupported OS: $os" ;;
     esac
 
     case "$arch" in
@@ -44,14 +45,21 @@ detect_platform() {
     if [ "$OS" = "linux" ] && [ "$ARCH" != "amd64" ]; then
         error "Only x86_64 (amd64) is supported on Linux"
     fi
+
+    if [ "$OS" = "windows" ] && [ "$ARCH" != "amd64" ]; then
+        error "Only x86_64 (amd64) is supported on Windows"
+    fi
+}
+
+fetch_checksums() {
+    local checksums_url="${BASE_URL}/checksums-sha256.txt"
+    CHECKSUMS_FILE="$(mktemp)"
+    curl -sfL "$checksums_url" -o "$CHECKSUMS_FILE" || error "Failed to download checksums"
 }
 
 get_expected_sha256() {
-    if [ "$OS" = "darwin" ] && [ "$ARCH" = "arm64" ]; then
-        echo "$DARWIN_ARM64_SHA256"
-    elif [ "$OS" = "linux" ] && [ "$ARCH" = "amd64" ]; then
-        echo "$LINUX_AMD64_SHA256"
-    fi
+    local filename="$1"
+    grep "  ${filename}\$" "$CHECKSUMS_FILE" | awk '{print $1}'
 }
 
 verify_checksum_quiet() {
@@ -76,28 +84,51 @@ verify_checksum() {
     fi
 }
 
+format_bytes() {
+    local n="$1"
+    if [ "$n" -ge 1073741824 ]; then
+        printf "%.1f GB" "$(echo "scale=1; $n / 1073741824" | bc)"
+    elif [ "$n" -ge 1048576 ]; then
+        printf "%.1f MB" "$(echo "scale=1; $n / 1048576" | bc)"
+    else
+        printf "%d KB" "$(( n / 1024 ))"
+    fi
+}
+
 print_progress() {
     local bytes="$1"
     local length="$2"
+    local label="${3:-Downloading}"
     [ "$length" -gt 0 ] || return 0
 
-    local width=50
+    local width=40
     local percent=$(( bytes * 100 / length ))
     [ "$percent" -gt 100 ] && percent=100
     local on=$(( percent * width / 100 ))
     local off=$(( width - on ))
 
     local filled=$(printf "%*s" "$on" "")
-    filled=${filled// /■}
+    filled=${filled// /█}
     local empty=$(printf "%*s" "$off" "")
-    empty=${empty// /･}
+    empty=${empty// /░}
 
-    printf "\r${PINK}%s%s %3d%%${NC}" "$filled" "$empty" "$percent"
+    local dl_str total_str
+    dl_str="$(format_bytes "$bytes")"
+    total_str="$(format_bytes "$length")"
+
+    # Two-line display: label on line 1, bar on line 2
+    printf "\r\033[K${MUTED}%s  %s / %s${NC}\n\r\033[K${PINK}%s${MUTED}%s${NC} ${PINK}%3d%%${NC}\033[1A\r" \
+        "$label" "$dl_str" "$total_str" "$filled" "$empty" "$percent"
+}
+
+clear_progress() {
+    printf "\r\033[K\n\r\033[K\033[1A\r"
 }
 
 download_with_progress() {
     local url="$1"
     local output="$2"
+    local label="${3:-Downloading}"
     local length=0
     local bytes=0
 
@@ -113,14 +144,14 @@ download_with_progress() {
             if [ -f "$output" ]; then
                 bytes=$(wc -c < "$output" 2>/dev/null | tr -d ' ')
                 bytes=${bytes:-0}
-                print_progress "$bytes" "$length"
+                print_progress "$bytes" "$length" "$label"
             fi
             sleep 0.1
         done
         wait "$curl_pid"
         local ret=$?
-        print_progress "$length" "$length"
-        echo ""
+        print_progress "$length" "$length" "$label"
+        clear_progress
         return $ret
     else
         curl -fL --progress-bar "$url" -o "$output"
@@ -152,19 +183,19 @@ setup_path() {
     case "$current_shell" in
         fish)
             config_files="$HOME/.config/fish/config.fish"
-            path_command="fish_add_path $INSTALL_DIR"
+            path_command="fish_add_path $BASE_DIR"
             ;;
         zsh)
             config_files="${ZDOTDIR:-$HOME}/.zshrc"
-            path_command="export PATH=\"${INSTALL_DIR}:\$PATH\""
+            path_command="export PATH=\"${BASE_DIR}:\$PATH\""
             ;;
         bash)
             config_files="$HOME/.bashrc $HOME/.bash_profile $HOME/.profile"
-            path_command="export PATH=\"${INSTALL_DIR}:\$PATH\""
+            path_command="export PATH=\"${BASE_DIR}:\$PATH\""
             ;;
         *)
             config_files="$HOME/.bashrc $HOME/.profile"
-            path_command="export PATH=\"${INSTALL_DIR}:\$PATH\""
+            path_command="export PATH=\"${BASE_DIR}:\$PATH\""
             ;;
     esac
 
@@ -186,7 +217,7 @@ setup_path() {
     add_to_path "$config_file" "$path_command"
 
     # Make slp available in the current session immediately
-    export PATH="${INSTALL_DIR}:$PATH"
+    export PATH="${BASE_DIR}:$PATH"
 }
 
 print_banner() {
@@ -198,75 +229,217 @@ print_banner() {
     echo -e ""
     echo -e "${MUTED}To get started:${NC}"
     echo -e ""
-    echo -e "  slp status  ${MUTED}# Check if the server is running${NC}"
     echo -e "  slp  ${MUTED}# Start the TUI${NC}"
+    echo -e "  slp status  ${MUTED}# Check if the server is running${NC}"
     echo -e ""
     echo -e "${MUTED}For more information visit ${NC}https://smartloop.ai/docs/intro/"
     echo -e ""
 }
 
-install_smartloop() {
-    local tmpdir archive_url expected_sha256
-
-    detect_platform
-
-    archive_url="${BASE_URL}/${OS}/${ARCH}/slp.tar.gz"
-    expected_sha256="$(get_expected_sha256)"
-
-    local cache_dir="${INSTALL_DIR}/cache"
-    local cached_archive="${cache_dir}/slp-${VERSION}-${OS}-${ARCH}.tar.gz"
-
+download_archive() {
+    local cache_dir="${BASE_DIR}/cache"
     mkdir -p "$cache_dir"
 
-    # Skip download if cached archive matches expected checksum
-    if [ -f "$cached_archive" ] && verify_checksum_quiet "$cached_archive" "$expected_sha256"; then
-        echo -e "\n${MUTED}Using cached archive for ${NC}smartloop${MUTED} version: ${NC}${VERSION}"
+    if [ "$OS" = "windows" ]; then
+        local archive_name="windows-${ARCH}-slp.zip"
+        CACHED_ARCHIVE="${cache_dir}/slp-${VERSION}-${OS}-${ARCH}.zip"
     else
-        echo -e "\n${MUTED}Downloading ${NC}smartloop${MUTED} version: ${NC}${VERSION}"
-        download_with_progress "$archive_url" "$cached_archive"
-
-        echo -e "${MUTED}Verifying checksum...${NC}"
-        verify_checksum "$cached_archive" "$expected_sha256"
+        CACHED_ARCHIVE="${cache_dir}/slp-${VERSION}-${OS}-${ARCH}.tar.gz"
     fi
 
-    tmpdir="$(mktemp -d)"
-    trap 'rm -rf "${tmpdir:-}"' EXIT
+    # Skip download if cached archive matches
+    if [ "$OS" = "darwin" ]; then
+        local archive_name="darwin-${ARCH}-slp.tar.gz"
+        local expected_sha256
+        expected_sha256="$(get_expected_sha256 "$archive_name")"
 
+        if [ -n "$expected_sha256" ] && [ -f "$CACHED_ARCHIVE" ] && verify_checksum_quiet "$CACHED_ARCHIVE" "$expected_sha256"; then
+            echo -e "\n${MUTED}Using cached archive for ${NC}smartloop${MUTED} version: ${NC}${VERSION}"
+            return 0
+        fi
+
+        download_with_progress "${BASE_URL}/${archive_name}" "$CACHED_ARCHIVE" "Downloading smartloop v${VERSION}"
+
+        if [ -n "$expected_sha256" ]; then
+            echo -e "${MUTED}Verifying checksum...${NC}"
+            verify_checksum "$CACHED_ARCHIVE" "$expected_sha256"
+        fi
+
+    elif [ "$OS" = "linux" ]; then
+        # Linux archive is split into parts (GitHub Releases 2GB limit)
+        local parts_dir
+        parts_dir="$(mktemp -d)"
+        local part_prefix="linux-${ARCH}-slp.tar.gz.part-"
+        local dl_label="Downloading smartloop v${VERSION}"
+
+        # Discover available parts and compute total size
+        local available_parts=()
+        local total_size=0
+        for suffix in aa ab ac ad ae af ag ah; do
+            local part_url="${BASE_URL}/${part_prefix}${suffix}"
+            if curl -sfI -L "$part_url" >/dev/null 2>&1; then
+                available_parts+=("$suffix")
+                local part_len
+                part_len=$(curl -sI -L "$part_url" | grep -i content-length | tail -1 | awk '{print $2}' | tr -d '\r')
+                total_size=$(( total_size + ${part_len:-0} ))
+            else
+                break
+            fi
+        done
+
+        # Download all parts with a single combined progress bar
+        local downloaded_so_far=0
+        for suffix in "${available_parts[@]}"; do
+            local part_url="${BASE_URL}/${part_prefix}${suffix}"
+            local part_file="${parts_dir}/${part_prefix}${suffix}"
+            local expected_part_sha256
+            expected_part_sha256="$(get_expected_sha256 "${part_prefix}${suffix}")"
+
+            curl -sL "$part_url" -o "$part_file" &
+            local curl_pid=$!
+
+            while kill -0 "$curl_pid" 2>/dev/null; do
+                if [ -f "$part_file" ]; then
+                    local current_bytes
+                    current_bytes=$(wc -c < "$part_file" 2>/dev/null | tr -d ' ')
+                    current_bytes=${current_bytes:-0}
+                    print_progress $(( downloaded_so_far + current_bytes )) "$total_size" "$dl_label"
+                fi
+                sleep 0.1
+            done
+            wait "$curl_pid" || error "Failed to download part ${suffix}"
+
+            local part_size
+            part_size=$(wc -c < "$part_file" | tr -d ' ')
+            downloaded_so_far=$(( downloaded_so_far + part_size ))
+            print_progress "$downloaded_so_far" "$total_size" "$dl_label"
+
+            if [ -n "$expected_part_sha256" ]; then
+                verify_checksum "$part_file" "$expected_part_sha256"
+            fi
+        done
+        print_progress "$total_size" "$total_size" "$dl_label"
+        clear_progress
+
+        echo -e "${MUTED}Processing...${NC}"
+        cat "${parts_dir}/${part_prefix}"* > "$CACHED_ARCHIVE"
+        rm -rf "$parts_dir"
+
+    elif [ "$OS" = "windows" ]; then
+        local archive_name="windows-${ARCH}-slp.zip"
+        local expected_sha256
+        expected_sha256="$(get_expected_sha256 "$archive_name")"
+
+        if [ -n "$expected_sha256" ] && [ -f "$CACHED_ARCHIVE" ] && verify_checksum_quiet "$CACHED_ARCHIVE" "$expected_sha256"; then
+            echo -e "\n${MUTED}Using cached archive for ${NC}smartloop${MUTED} version: ${NC}${VERSION}"
+            return 0
+        fi
+
+        echo -e "\n${MUTED}Downloading ${NC}smartloop${MUTED} version: ${NC}${VERSION}"
+        download_with_progress "${BASE_URL}/${archive_name}" "$CACHED_ARCHIVE"
+
+        if [ -n "$expected_sha256" ]; then
+            echo -e "${MUTED}Verifying checksum...${NC}"
+            verify_checksum "$CACHED_ARCHIVE" "$expected_sha256"
+        fi
+    fi
+}
+
+extract_archive() {
+    local tmpdir="$1"
     echo -e "${MUTED}Extracting...${NC}"
-    tar -xzf "$cached_archive" -C "$tmpdir"
+    if [ "$OS" = "windows" ]; then
+        unzip -qo "$CACHED_ARCHIVE" -d "$tmpdir"
+    else
+        tar -xzf "$CACHED_ARCHIVE" -C "$tmpdir"
+    fi
+}
 
-    echo -e "${MUTED}Installing to ${NC}${INSTALL_DIR}${MUTED}...${NC}"
-    mkdir -p "$INSTALL_DIR"
-    rm -rf "${INSTALL_DIR:?}/"*
-    cp -r "${tmpdir}/slp/"* "$INSTALL_DIR/"
+install_smartloop() {
+    detect_platform
+
+    # Skip download + extract if this version is already installed
+    local slp_existing="${INSTALL_DIR}/slp"
+    [ "$OS" = "windows" ] && slp_existing="${INSTALL_DIR}/slp.exe"
+
+    if [ -x "$slp_existing" ]; then
+        echo -e "\n${MUTED}Version ${NC}${VERSION}${MUTED} is already installed.${NC}"
+    else
+        fetch_checksums
+
+        download_archive
+
+        local tmpdir
+        tmpdir="$(mktemp -d)"
+        trap 'rm -rf "${tmpdir:-}" "${CHECKSUMS_FILE:-}"' EXIT
+
+        extract_archive "$tmpdir"
+
+        echo -e "${MUTED}Installing to ${NC}${INSTALL_DIR}${MUTED}...${NC}"
+        mkdir -p "$INSTALL_DIR"
+        rm -rf "${INSTALL_DIR:?}/"*
+        cp -r "${tmpdir}/slp/"* "$INSTALL_DIR/"
+    fi
+
+    # Track installed version
+    local versions_file="${BASE_DIR}/version"
+    echo "$VERSION" > "$versions_file"
+
+    # Record in installed versions list
+    local installed_file="${BASE_DIR}/installed"
+    if [ ! -f "$installed_file" ] || ! grep -qx "$VERSION" "$installed_file"; then
+        echo "$VERSION" >> "$installed_file"
+    fi
+
+    local slp_bin="${INSTALL_DIR}/slp"
+    [ "$OS" = "windows" ] && slp_bin="${INSTALL_DIR}/slp.exe"
 
     echo -e "${MUTED}Verifying installation...${NC}"
-    if ! "${INSTALL_DIR}/slp" --help &>/dev/null; then
+    if ! "$slp_bin" --help &>/dev/null; then
         error "Installation verification failed: 'slp --help' did not succeed"
     fi
 
-    setup_path
-
-    if [ -d "$HOME/.local/bin" ] && [ -w "$HOME/.local/bin" ]; then
-        ln -sf "${INSTALL_DIR}/slp" "$HOME/.local/bin/slp" 2>/dev/null || true
-    elif [ -w /usr/local/bin ]; then
-        ln -sf "${INSTALL_DIR}/slp" /usr/local/bin/slp 2>/dev/null || true
+    if [ "$OS" = "windows" ]; then
+        echo ""
+        echo -e "${GREEN}Add the following to your PATH:${NC}"
+        echo -e "  ${BOLD}${BASE_DIR}${NC}"
+        echo ""
     else
-        mkdir -p "$HOME/.local/bin"
-        ln -sf "${INSTALL_DIR}/slp" "$HOME/.local/bin/slp" 2>/dev/null || true
-        echo ""
-        echo -e "${GREEN}To use slp immediately, add to your shell config:${NC}"
-        echo -e "  ${BOLD}fish_add_path -g $HOME/.local/bin${NC}  # fish"
-        echo -e "  ${BOLD}export PATH=\"$HOME/.local/bin:\$PATH\"${NC}  # bash/zsh"
-        echo ""
+        setup_path
+
+        # Symlink slp binary to base dir for PATH consistency
+        ln -sf "${slp_bin}" "${BASE_DIR}/slp"
+
+        if [ -d "$HOME/.local/bin" ] && [ -w "$HOME/.local/bin" ]; then
+            ln -sf "${BASE_DIR}/slp" "$HOME/.local/bin/slp" 2>/dev/null || true
+        elif [ -w /usr/local/bin ]; then
+            ln -sf "${BASE_DIR}/slp" /usr/local/bin/slp 2>/dev/null || true
+        else
+            mkdir -p "$HOME/.local/bin"
+            ln -sf "${BASE_DIR}/slp" "$HOME/.local/bin/slp" 2>/dev/null || true
+            echo ""
+            echo -e "${GREEN}To use slp immediately, add to your shell config:${NC}"
+            echo -e "  ${BOLD}fish_add_path -g $HOME/.local/bin${NC}  # fish"
+            echo -e "  ${BOLD}export PATH=\"$HOME/.local/bin:\$PATH\"${NC}  # bash/zsh"
+            echo ""
+        fi
     fi
 
-    echo -e "${MUTED}Starting background service...${NC}"
-    if [ "$OS" = "linux" ]; then
-        setup_systemd_service
-    elif [ "$OS" = "darwin" ]; then
-        setup_launchd_service
+    # Skip service setup if already running
+    if "$slp_bin" status &>/dev/null; then
+        echo -e "${MUTED}Background service is already running.${NC}"
+    else
+        echo -e "${MUTED}Starting background service...${NC}"
+        if [ "$OS" = "linux" ]; then
+            setup_systemd_service
+        elif [ "$OS" = "darwin" ]; then
+            setup_launchd_service
+        fi
     fi
+
+    # Initialize the model so users don't see download progress on first launch
+    echo -e "${MUTED}Initializing model...${NC}"
+    "$slp_bin" init 2>/dev/null || true
 
     print_banner
 }
@@ -296,12 +469,12 @@ setup_launchd_service() {
     <string>com.smartloop.server</string>
     <key>ProgramArguments</key>
     <array>
-        <string>${INSTALL_DIR}/slp</string>
+        <string>${BASE_DIR}/slp</string>
         <string>server</string>
         <string>start</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>${INSTALL_DIR}</string>
+    <string>${BASE_DIR}</string>
     <key>RunAtLoad</key>
     <true/>
     <key>StandardOutPath</key>
@@ -325,7 +498,7 @@ EOF
 
     # Remove quarantine attributes that can cause launchctl I/O errors
     xattr -dr com.apple.quarantine "$plist" 2>/dev/null || true
-    xattr -dr com.apple.quarantine "${INSTALL_DIR}/slp" 2>/dev/null || true
+    xattr -dr com.apple.quarantine "${BASE_DIR}/slp" 2>/dev/null || true
 
     # Load the service with retry — transient I/O errors can occur right after
     # bootout or when the binary was just extracted.
@@ -377,10 +550,10 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=${INSTALL_DIR}/slp server start
+ExecStart=${BASE_DIR}/slp server start
 Restart=on-failure
 RestartSec=5
-WorkingDirectory=${INSTALL_DIR}
+WorkingDirectory=${BASE_DIR}
 StandardOutput=append:${log_file}
 StandardError=append:${log_file}
 
