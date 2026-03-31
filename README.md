@@ -9,7 +9,7 @@
 </p>
 <p align="center">An AI assistant to generate information and auto-tune from documents</p>
 <p align="center">
-  <a href="https://github.com/smartloop-ai/smartloop/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-GPL%20v3-pink?style=flat-square" /></a>
+  <img src="https://img.shields.io/github/actions/workflow/status/smartloop-ai/smartloop/release.yml"/>
 </p>
 
 [![Smartloop Terminal UI](screenshot.png)](https://smartloop.ai)
