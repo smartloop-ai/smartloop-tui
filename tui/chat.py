@@ -1,6 +1,7 @@
 """Textual TUI chat interface for SLP Framework."""
 
 import logging
+import os
 import uuid
 from pathlib import Path
 
@@ -74,8 +75,10 @@ class SLPChat(
         self.project_rules = project_rules
         self.pending_attachments: list[str] = []
         self._attachment_names: list[str] = []
+        self.current_dir = os.getcwd()
+        self.display_dir = self.current_dir.replace(os.path.expanduser("~"), "~", 1)
         self.title = project_name or "project_name"
-        self.sub_title = model_name or "starting..."
+        self.sub_title = self.display_dir
         self._streaming = False
         self._current_worker = None
         self._bootstrap_done = False
@@ -176,16 +179,11 @@ class SLPChat(
         """Update the info bar with project name, model and attachments."""
         bar = self.query_one("#info-bar", Horizontal)
         bar.remove_children()
-        if not self._bootstrap_done:
-            bar.mount(Horizontal(
-                Static("project_name", classes="badge-text"),
-                classes="badge-group muted",
-            ))
-        else:
+        if self.display_dir:
+            bar.mount(self._make_badge(self.display_dir, "muted"))
+        if self._bootstrap_done:
             if self.title and self.title not in ("Playground", "project_name"):
                 bar.mount(self._make_badge(self.title, icon="▤"))
-            if self.model_name:
-                bar.mount(self._make_badge(self.model_name, "muted"))
 
         if self._attachment_names:
             for name in self._attachment_names:
