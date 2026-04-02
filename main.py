@@ -108,6 +108,10 @@ def main():
         "--developer-token", "-t",
         help="Smartloop developer token to download model (falls back to SLP_DEVELOPER_TOKEN in .env)",
     )
+    init_parser.add_argument(
+        "--hf",
+        help="Hugging Face token for downloading models from Hugging Face Hub",
+    )
 
     # Run command
     run_parser = subparsers.add_parser("run", help="Run interactive chat with the model")
