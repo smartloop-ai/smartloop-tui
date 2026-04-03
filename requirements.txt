@@ -10,4 +10,4 @@ prettytable==3.16.0
 
 # Smartloop framework
 --extra-index-url https://us-central1-python.pkg.dev/smartloop-gcp-us-east/slp-pypi/simple/
-smartloop==1.0.1
+smartloop==1.0.2

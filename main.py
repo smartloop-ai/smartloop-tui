@@ -95,6 +95,8 @@ def main():
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--resume", metavar="CONVERSATION_ID", default=None,
                         help="Resume a previous conversation by session ID")
+    parser.add_argument("-C", "--path", default=None, metavar="PATH",
+                        help="Working directory to use (defaults to current directory)")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Initialize command
@@ -107,10 +109,6 @@ def main():
     init_parser.add_argument(
         "--developer-token", "-t",
         help="Smartloop developer token to download model (falls back to SLP_DEVELOPER_TOKEN in .env)",
-    )
-    init_parser.add_argument(
-        "--hf",
-        help="Hugging Face token for downloading models from Hugging Face Hub",
     )
 
     # Run command
@@ -145,6 +143,13 @@ def main():
     token_subparsers.add_parser("clear", help="Remove stored token")
 
     args = parser.parse_args()
+
+    # Change to the specified working directory if provided
+    if args.path:
+        target = os.path.abspath(args.path)
+        if not os.path.isdir(target):
+            parser.error(f"path '{args.path}' is not a valid directory")
+        os.chdir(target)
 
     # Persist -t token to keychain so it's available to all consumers
     cli_token = getattr(args, "developer_token", None)
