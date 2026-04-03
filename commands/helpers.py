@@ -58,16 +58,16 @@ def get_editable_input() -> str:
     return user_input
 
 
-def get_rule_input(existing_rules: str = "") -> str:
-    """Get rule input with multiline support."""
-    console.print("[bold cyan]Enter rule text (Escape+Enter to finish):[/bold cyan]")
-    if existing_rules:
-        console.print("[dim]Existing rules loaded. Edit as needed.[/dim]")
+def get_skill_input() -> str:
+    """Get skill input with multiline support."""
+    console.print("[bold cyan]Enter skill text (Escape+Enter to finish):[/bold cyan]")
     console.print("[dim]Supports markdown formatting. Press Escape+Enter when done.[/dim]\n")
-    if existing_rules:
-        console.print(f"[yellow]Current rules:[/yellow]\n{existing_rules}\n")
-        console.print("[dim]---[/dim]\n")
     return get_editable_input()
+
+
+def get_skill_name_input() -> str:
+    """Prompt for a skill name."""
+    return prompt("Skill name: ").strip()
 
 
 def upload_asset_cli(filepath: str, host: str, port: int) -> str | None:
@@ -214,7 +214,7 @@ def run_interactive(
     )
 
     if project_rules and project_rules.strip():
-        console.print("[bold yellow]Active Project Rules:[/bold yellow]")
+        console.print("[bold yellow]Active Project Skills:[/bold yellow]")
         console.print(f"[dim]{project_rules}[/dim]")
         console.print()
 

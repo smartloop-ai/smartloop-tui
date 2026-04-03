@@ -22,6 +22,7 @@ from commands.run import RunCommand
 from commands.token import TokenCommand
 from commands.server import ServerCommand
 
+
 # Use certifi CA bundle for SSL verification (required for PyInstaller builds
 # where system certificates are not available)
 os.environ.setdefault("SSL_CERT_FILE", certifi.where())
@@ -72,6 +73,8 @@ class CommandHandler(
             "run": RunCommand,
             "init": InitCommand,
             "status": ModelCommand,
+            "train": ModelCommand,
+            "build": ModelCommand,
             "token": TokenCommand,
             "server": ServerCommand,
         }
@@ -92,6 +95,8 @@ def main():
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--resume", metavar="CONVERSATION_ID", default=None,
                         help="Resume a previous conversation by session ID")
+    parser.add_argument("-C", "--path", default=None, metavar="PATH",
+                        help="Working directory to use (defaults to current directory)")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Initialize command
@@ -121,14 +126,14 @@ def main():
     # Server management commands
     server_parser = subparsers.add_parser("server", help="Server management commands")
     server_subparsers = server_parser.add_subparsers(dest="server_command", help="Server commands")
-    start_parser = server_subparsers.add_parser("start", help="Start the API server in background")
-    start_parser.add_argument("--debug", "-d", action="store_true", help="Enable debug mode (load base model + LoRA adapters)")
-    start_parser.add_argument("--no-service", action="store_true", help="Disable auto-restart on crash")
+    start_server_parser = server_subparsers.add_parser("start", help="Start the API server in background")
+    start_server_parser.add_argument("--debug", "-d", action="store_true", help="Enable debug mode (load base model + LoRA adapters)")
+    start_server_parser.add_argument("--no-service", action="store_true", help="Disable auto-restart on crash")
     server_subparsers.add_parser("stop", help="Stop the background API server")
     server_subparsers.add_parser("status", help="Show server status")
-    restart_parser = server_subparsers.add_parser("restart", help="Restart the API server")
-    restart_parser.add_argument("--debug", "-d", action="store_true", help="Enable debug mode (load base model + LoRA adapters)")
-    restart_parser.add_argument("--no-service", action="store_true", help="Disable auto-restart on crash")
+    restart_server_parser = server_subparsers.add_parser("restart", help="Restart the API server")
+    restart_server_parser.add_argument("--debug", "-d", action="store_true", help="Enable debug mode (load base model + LoRA adapters)")
+    restart_server_parser.add_argument("--no-service", action="store_true", help="Disable auto-restart on crash")
 
     # Token management commands
     token_parser = subparsers.add_parser("token", help="Manage your developer token")
@@ -138,6 +143,13 @@ def main():
     token_subparsers.add_parser("clear", help="Remove stored token")
 
     args = parser.parse_args()
+
+    # Change to the specified working directory if provided
+    if args.path:
+        target = os.path.abspath(args.path)
+        if not os.path.isdir(target):
+            parser.error(f"path '{args.path}' is not a valid directory")
+        os.chdir(target)
 
     # Persist -t token to keychain so it's available to all consumers
     cli_token = getattr(args, "developer_token", None)

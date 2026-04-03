@@ -3,7 +3,7 @@
 from .base import Command
 from .init import InitCommand
 from .document import DocumentCommand
-from .rule import RuleCommand
+from .skill import SkillCommand
 from .model import ModelCommand
 from .run import RunCommand
 from .token import TokenCommand
@@ -15,7 +15,7 @@ __all__ = [
     "Command",
     "InitCommand",
     "DocumentCommand",
-    "RuleCommand",
+    "SkillCommand",
     "ModelCommand",
     "RunCommand",
     "TokenCommand",

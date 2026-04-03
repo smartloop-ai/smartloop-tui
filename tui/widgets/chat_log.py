@@ -29,20 +29,22 @@ class ChatLog:
         log.scroll_end(animate=False)
 
     def _show_welcome(self) -> None:
-        """Show project context and usage hints at the top of the chat."""
+        """Show project context at the top of the chat (minimal)."""
         log = self.query_one("#chat-log", VerticalScroll)
-        lines = [f"[bold #ec4899]{LOGO}[/bold #ec4899]", f"[#4a3d5c]v{__version__}[/#4a3d5c]", ""]
+        lines = []
         if self.project_rules:
-            lines.append("[#ec4899]Rules:[/#ec4899]")
+            lines.append("[#ec4899]Skills:[/#ec4899]")
             for rule in self.project_rules.strip().splitlines():
                 lines.append(f"  [dim]{rule}[/dim]")
             lines.append("")
-        lines.append("")
-        log.mount(Static("\n".join(lines), classes="system-msg"))
+        if lines:
+            log.mount(Static("\n".join(lines), classes="system-msg"))
 
     def _show_help(self) -> None:
-        """Show the full commands table in the chat log."""
+        """Show logo, version, and the full commands table in the chat log."""
         log = self.query_one("#chat-log", VerticalScroll)
+        header = f"[bold #ec4899]{LOGO}[/bold #ec4899]\n[#4a3d5c]v{__version__}[/#4a3d5c]\n"
+        log.mount(Static(header, classes="system-msg"))
         commands_table = Table(
             show_header=True,
             header_style="#ec4899",
@@ -51,6 +53,7 @@ class ChatLog:
             expand=False,
             pad_edge=True,
             padding=(0, 1),
+            show_lines=True,
         )
         commands_table.add_column("Command", style="#f9a8d4", no_wrap=True)
         commands_table.add_column("Description", style="dim")
@@ -76,7 +79,7 @@ class ChatLog:
             "",
             f"  [{c}]/attach <file>[/{c}]    [{d}]Attach a file in the conversation for the model to use[/{d}]",
             f"  [{c}]/document add[/{c}]     [{d}]Add documents to the model context, available in any conversation for the project[/{d}]",
-            f"  [{c}]/rule add[/{c}]         [{d}]Set custom instructions on how the model should respond[/{d}]",
+            f"  [{c}]/skill add[/{c}]        [{d}]Set custom instructions on how the model should respond[/{d}]",
             f"  [{c}]/project add[/{c}]      [{d}]Create and switch between projects[/{d}]",
             f"  [{c}]/mcp add[/{c}]          [{d}]Connect external tools via MCP[/{d}]",
             f"  [{c}]/model[/{c}]             [{d}]Show current model info[/{d}]",

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+import os
 
 import httpx
 from rich.markup import escape as _rich_escape
@@ -22,6 +23,7 @@ class Streaming:
     server_url: str
     model_name: str
     session_id: str
+    display_dir: str
     pending_attachments: list
     _attachment_names: list
     _streaming: bool
@@ -68,6 +70,7 @@ class Streaming:
             ],
             "stream": True,
             "session_id": self.session_id,
+            "cwd": os.path.expanduser(self.display_dir),
         }
         self.pending_attachments = []
         self._attachment_names = []
