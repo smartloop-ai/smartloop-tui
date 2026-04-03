@@ -21,7 +21,7 @@
 Copy and paste the following script to your terminal to get started:
 
 ```bash
-curl -fsSL https://smartloop.ai/install | bash
+curl -fsSL https://smartloop.ai/install | sh
 ```
 
 Install using [Homebrew](https://brew.sh) (recommended):
