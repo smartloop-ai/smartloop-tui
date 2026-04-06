@@ -117,12 +117,13 @@ print_progress() {
     total_str="$(format_bytes "$length")"
 
     # Two-line display: label on line 1, bar on line 2
-    printf "\r\033[K${MUTED}%s  %s / %s${NC}\n\r\033[K${PINK}%s${MUTED}%s${NC} ${PINK}%3d%%${NC}\033[1A\r" \
+    printf "\r\033[K${MUTED}%s  %s / %s${NC}\n\r\033[K${PINK}%s${MUTED}%s${NC} ${PINK}%3d%%${NC}\033[1A" \
         "$label" "$dl_str" "$total_str" "$filled" "$empty" "$percent"
 }
 
 clear_progress() {
-    printf "\r\033[K\n\r\033[K\033[1A\r"
+    # Move past both lines and show cursor, keeping everything visible
+    printf "\n\n\033[?25h"
 }
 
 download_with_progress() {
@@ -137,7 +138,9 @@ download_with_progress() {
     length=${length:-0}
 
     if [ "$length" -gt 0 ] && [ -t 2 ]; then
-        curl -sL "$url" -o "$output" --write-out "" 2>/dev/null &
+        trap 'printf "\n\n\033[?25h"; exit 1' INT
+        printf "\033[?25l\n"
+        curl -sL --connect-timeout 10 --speed-limit 1024 --speed-time 30 "$url" -o "$output" --write-out "" 2>/dev/null &
         local curl_pid=$!
 
         while kill -0 "$curl_pid" 2>/dev/null; do
@@ -152,6 +155,7 @@ download_with_progress() {
         local ret=$?
         print_progress "$length" "$length" "$label"
         clear_progress
+        trap - INT
         return $ret
     else
         curl -fL --progress-bar "$url" -o "$output"
@@ -258,7 +262,7 @@ download_archive() {
             return 0
         fi
 
-        download_with_progress "${BASE_URL}/${archive_name}" "$CACHED_ARCHIVE" "Downloading smartloop v${VERSION}"
+        download_with_progress "${BASE_URL}/${archive_name}" "$CACHED_ARCHIVE" "Downloading Smartloop v${VERSION}"
 
         if [ -n "$expected_sha256" ]; then
             echo -e "${MUTED}Verifying checksum...${NC}"
@@ -270,7 +274,7 @@ download_archive() {
         local parts_dir
         parts_dir="$(mktemp -d)"
         local part_prefix="linux-${ARCH}-slp.tar.gz.part-"
-        local dl_label="Downloading smartloop v${VERSION}"
+        local dl_label="Downloading Smartloop v${VERSION}"
 
         # Discover available parts and compute total size
         local available_parts=()
@@ -289,6 +293,8 @@ download_archive() {
 
         # Download all parts with a single combined progress bar
         local downloaded_so_far=0
+        trap 'printf "\n\n\033[?25h"; exit 1' INT
+        printf "\033[?25l\n"
         for suffix in "${available_parts[@]}"; do
             local part_url="${BASE_URL}/${part_prefix}${suffix}"
             local part_file="${parts_dir}/${part_prefix}${suffix}"
@@ -320,6 +326,7 @@ download_archive() {
         done
         print_progress "$total_size" "$total_size" "$dl_label"
         clear_progress
+        trap - INT
 
         echo -e "${MUTED}Processing...${NC}"
         cat "${parts_dir}/${part_prefix}"* > "$CACHED_ARCHIVE"
@@ -439,7 +446,11 @@ install_smartloop() {
 
     # Initialize the model so users don't see download progress on first launch
     echo -e "${MUTED}Initializing model...${NC}"
-    "$slp_bin" init 2>/dev/null || true
+    if command -v timeout &>/dev/null; then
+        timeout 300 "$slp_bin" init 2>/dev/null || echo -e "${MUTED}Model download timed out. Run ${NC}slp init${MUTED} to retry.${NC}"
+    else
+        "$slp_bin" init 2>/dev/null || true
+    fi
 
     print_banner
 }
