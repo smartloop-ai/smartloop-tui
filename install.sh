@@ -23,37 +23,6 @@ CACHE_DIR="${HOME}/.cache/smartloop"
 
 error() { echo -e "${RED}Error:${NC} $1" >&2; exit 1; }
 
-# progress-bar — adapted from progress-bar.sh by Édouard Lopez
-# https://github.com/edouard-lopez/progress-bar.sh — MIT License
-progress-bar() {
-    local duration=${1}
-    local columns
-    local space_available
-    local fit_to_screen
-    local space_reserved=6
-
-    columns=$(tput cols 2>/dev/null || echo 80)
-    space_available=$(( columns - space_reserved ))
-
-    if (( duration < space_available )); then
-        fit_to_screen=1
-    else
-        fit_to_screen=$(( duration / space_available + 1 ))
-    fi
-
-    already_done() { for ((done=0; done<(elapsed / fit_to_screen); done++)); do printf "▇"; done; }
-    remaining() { for ((remain=(elapsed / fit_to_screen); remain<(duration / fit_to_screen); remain++)); do printf " "; done; }
-    percentage() { printf "| %s%%" $(( elapsed * 100 / duration )); }
-    clean_line() { printf "\r"; }
-
-    for (( elapsed=1; elapsed<=duration; elapsed++ )); do
-        already_done; remaining; percentage
-        sleep "$SLEEP_DURATION"
-        clean_line
-    done
-    clean_line
-}
-
 detect_platform() {
     local os arch
     os="$(uname -s)"
@@ -129,47 +98,38 @@ format_bytes() {
     fi
 }
 
-print_progress() {
-    # Adapted from progress-bar.sh by Édouard Lopez
-    # https://github.com/edouard-lopez/progress-bar.sh
+# progress_bar — adapted from progress-bar.sh by Édouard Lopez
+# https://github.com/edouard-lopez/progress-bar.sh — MIT License
+progress_bar() {
     local bytes="$1"
     local length="$2"
     local label="${3:-Downloading}"
     [ "$length" -gt 0 ] || return 0
 
     local columns
+    local space_reserved=6
+
     columns=$(tput cols 2>/dev/null || echo 80)
-
-    local dl_str total_str label_line
-    dl_str="$(format_bytes "$bytes")"
-    total_str="$(format_bytes "$length")"
-    label_line="${label}  ${dl_str} / ${total_str}"
-
-    # Truncate label to terminal width so it never wraps
-    if [ ${#label_line} -gt "$columns" ]; then
-        label_line="${label_line:0:$((columns - 1))}"
-    fi
-
-    # Bar width matches the label text length, capped to terminal
-    local space_reserved=6   # reserved for "| XXX%"
-    local width=${#label_line}
-    [ "$width" -lt 10 ] && width=10
-    local max_bar=$(( columns - space_reserved ))
-    [ "$width" -gt "$max_bar" ] && width=$max_bar
+    local space_available=$(( columns - space_reserved ))
+    [ "$space_available" -lt 10 ] && space_available=10
 
     local percent=$(( bytes * 100 / length ))
     [ "$percent" -gt 100 ] && percent=100
 
-    local elapsed=$(( percent * width / 100 ))
+    local filled=$(( percent * space_available / 100 ))
 
     local bar=""
     local i
-    for (( i=0; i<elapsed; i++ )); do bar+="▇"; done
-    for (( i=elapsed; i<width; i++ )); do bar+=" "; done
+    for (( i=0; i<filled; i++ )); do bar+="▇"; done
+    for (( i=filled; i<space_available; i++ )); do bar+=" "; done
+
+    local dl_str total_str
+    dl_str="$(format_bytes "$bytes")"
+    total_str="$(format_bytes "$length")"
 
     # Two-line display: label on line 1, bar on line 2
-    printf "\r\033[K${MUTED}%s${NC}\n\r\033[K${PINK}%s${NC}| ${PINK}%3d%%${NC}\033[1A\r" \
-        "$label_line" "$bar" "$percent"
+    printf "\r\033[K${MUTED}%s  %s / %s${NC}\n\r\033[K%s| %3d%%\033[1A\r" \
+        "$label" "$dl_str" "$total_str" "$bar" "$percent"
 }
 
 end_progress() {
@@ -197,13 +157,13 @@ download_with_progress() {
             if [ -f "$output" ]; then
                 bytes=$(wc -c < "$output" 2>/dev/null | tr -d ' ')
                 bytes=${bytes:-0}
-                print_progress "$bytes" "$length" "$label"
+                progress_bar "$bytes" "$length" "$label"
             fi
             sleep 0.1
         done
         wait "$curl_pid"
         local ret=$?
-        print_progress "$length" "$length" "$label"
+        progress_bar "$length" "$length" "$label"
         end_progress
         return $ret
     else
@@ -361,7 +321,7 @@ download_archive() {
                     local current_bytes
                     current_bytes=$(wc -c < "$part_file" 2>/dev/null | tr -d ' ')
                     current_bytes=${current_bytes:-0}
-                    print_progress $(( downloaded_so_far + current_bytes )) "$total_size" "$dl_label"
+                    progress_bar $(( downloaded_so_far + current_bytes )) "$total_size" "$dl_label"
                 fi
                 sleep 0.1
             done
@@ -370,13 +330,13 @@ download_archive() {
             local part_size
             part_size=$(wc -c < "$part_file" | tr -d ' ')
             downloaded_so_far=$(( downloaded_so_far + part_size ))
-            print_progress "$downloaded_so_far" "$total_size" "$dl_label"
+            progress_bar "$downloaded_so_far" "$total_size" "$dl_label"
 
             if [ -n "$expected_part_sha256" ]; then
                 verify_checksum "$part_file" "$expected_part_sha256"
             fi
         done
-        print_progress "$total_size" "$total_size" "$dl_label"
+        progress_bar "$total_size" "$total_size" "$dl_label"
         end_progress
 
         cat "${parts_dir}/${part_prefix}"* > "$CACHED_ARCHIVE"
@@ -417,7 +377,7 @@ bootstrap_model() {
     local bootstrap_url="${base}/v1/bootstrap"
 
     # Wait for the server to be healthy before calling bootstrap
-    echo -e "${MUTED}Waiting for smartloop to be ready...${NC}"
+    echo -e "${MUTED}Waiting for smartloop to start ...${NC}"
     local attempts=0
     while [ $attempts -lt 30 ]; do
         if curl -sf "${base}/health" >/dev/null 2>&1; then
@@ -438,7 +398,7 @@ bootstrap_model() {
         return 1
     fi
 
-    echo -e "${MUTED}Setting up model for smartloop (${VERSION}) ...${NC}"
+    echo -e "${MUTED}Fetching model for smartloop (${VERSION}) ...${NC}"
 
     # Stream SSE events from the bootstrap endpoint
     local showing_progress=false
@@ -478,7 +438,7 @@ bootstrap_model() {
         if [ -n "$downloaded" ] && [ -n "$total" ] && [ "$total" -gt 0 ] 2>/dev/null; then
             showing_progress=true
             local friendly_name="${filename:-model}"
-            print_progress "$downloaded" "$total" "Downloading ${friendly_name}"
+            progress_bar "$downloaded" "$total" "Downloading ${friendly_name}"
 
         # Complete event
         elif [ "$event_type" = "complete" ] || [ "$status" = "completed" ]; then
@@ -486,7 +446,6 @@ bootstrap_model() {
                 end_progress
                 showing_progress=false
             fi
-            [ -n "$message" ] && echo -e "${GREEN}${message}${NC}"
 
         # Error event
         elif [ "$event_type" = "error" ] || [ "$status" = "error" ]; then
