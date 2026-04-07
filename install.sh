@@ -137,27 +137,35 @@ print_progress() {
     local label="${3:-Downloading}"
     [ "$length" -gt 0 ] || return 0
 
+    local columns
+    columns=$(tput cols 2>/dev/null || echo 80)
+
     local dl_str total_str label_line
     dl_str="$(format_bytes "$bytes")"
     total_str="$(format_bytes "$length")"
     label_line="${label}  ${dl_str} / ${total_str}"
 
-    # Bar width matches the label text length
-    local space_reserved=6   # reserved for " |XXX%"
+    # Truncate label to terminal width so it never wraps
+    if [ ${#label_line} -gt "$columns" ]; then
+        label_line="${label_line:0:$((columns - 1))}"
+    fi
+
+    # Bar width matches the label text length, capped to terminal
+    local space_reserved=6   # reserved for "| XXX%"
     local width=${#label_line}
     [ "$width" -lt 10 ] && width=10
+    local max_bar=$(( columns - space_reserved ))
+    [ "$width" -gt "$max_bar" ] && width=$max_bar
 
     local percent=$(( bytes * 100 / length ))
     [ "$percent" -gt 100 ] && percent=100
 
-    local fit_to_screen=1
-    local duration=$width
-    local elapsed=$(( percent * duration / 100 ))
+    local elapsed=$(( percent * width / 100 ))
 
     local bar=""
     local i
     for (( i=0; i<elapsed; i++ )); do bar+="▇"; done
-    for (( i=elapsed; i<duration; i++ )); do bar+=" "; done
+    for (( i=elapsed; i<width; i++ )); do bar+=" "; done
 
     # Two-line display: label on line 1, bar on line 2
     printf "\r\033[K${MUTED}%s${NC}\n\r\033[K${PINK}%s${NC}| ${PINK}%3d%%${NC}\033[1A\r" \
@@ -306,7 +314,7 @@ download_archive() {
     if [ "$OS" = "darwin" ]; then
         local archive_name="darwin-${ARCH}-slp.tar.gz"
 
-        download_with_progress "${BASE_URL}/${archive_name}" "$CACHED_ARCHIVE" "Get:1 ${BASE_URL} smartloop ${VERSION}"
+        download_with_progress "${BASE_URL}/${archive_name}" "$CACHED_ARCHIVE" "Get:1 smartloop ${VERSION}"
 
         local expected_sha256
         expected_sha256="$(get_expected_sha256 "$archive_name")"
@@ -319,7 +327,7 @@ download_archive() {
         local parts_dir
         parts_dir="$(mktemp -d)"
         local part_prefix="linux-${ARCH}-slp.tar.gz.part-"
-        local dl_label="Get:1 ${BASE_URL} smartloop ${VERSION}"
+        local dl_label="Get:1 smartloop ${VERSION}"
 
         # Discover available parts and compute total size
         local available_parts=()
@@ -377,7 +385,7 @@ download_archive() {
     elif [ "$OS" = "windows" ]; then
         local archive_name="windows-${ARCH}-slp.zip"
 
-        download_with_progress "${BASE_URL}/${archive_name}" "$CACHED_ARCHIVE" "Get:1 ${BASE_URL} smartloop ${VERSION}"
+        download_with_progress "${BASE_URL}/${archive_name}" "$CACHED_ARCHIVE" "Get:1 smartloop ${VERSION}"
 
         local expected_sha256
         expected_sha256="$(get_expected_sha256 "$archive_name")"
@@ -436,7 +444,7 @@ bootstrap_model() {
     local showing_progress=false
     local line event_type=""
 
-    printf "\033[?25l"
+    printf "\033[?25l\n"
 
     curl -sN -X POST "$bootstrap_url" 2>/dev/null | while IFS= read -r line; do
         # Strip carriage return
