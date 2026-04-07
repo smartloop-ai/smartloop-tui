@@ -18,7 +18,41 @@ NC='\033[0m'
 # SHA256 checksums — fetched from release at install time
 CHECKSUMS_FILE=""
 
+# Framework cache directory
+CACHE_DIR="${HOME}/.cache/smartloop"
+
 error() { echo -e "${RED}Error:${NC} $1" >&2; exit 1; }
+
+# progress-bar — adapted from progress-bar.sh by Édouard Lopez
+# https://github.com/edouard-lopez/progress-bar.sh — MIT License
+progress-bar() {
+    local duration=${1}
+    local columns
+    local space_available
+    local fit_to_screen
+    local space_reserved=6
+
+    columns=$(tput cols 2>/dev/null || echo 80)
+    space_available=$(( columns - space_reserved ))
+
+    if (( duration < space_available )); then
+        fit_to_screen=1
+    else
+        fit_to_screen=$(( duration / space_available + 1 ))
+    fi
+
+    already_done() { for ((done=0; done<(elapsed / fit_to_screen); done++)); do printf "▇"; done; }
+    remaining() { for ((remain=(elapsed / fit_to_screen); remain<(duration / fit_to_screen); remain++)); do printf " "; done; }
+    percentage() { printf "| %s%%" $(( elapsed * 100 / duration )); }
+    clean_line() { printf "\r"; }
+
+    for (( elapsed=1; elapsed<=duration; elapsed++ )); do
+        already_done; remaining; percentage
+        sleep "$SLEEP_DURATION"
+        clean_line
+    done
+    clean_line
+}
 
 detect_platform() {
     local os arch
@@ -59,7 +93,7 @@ fetch_checksums() {
 
 get_expected_sha256() {
     local filename="$1"
-    grep "  ${filename}\$" "$CHECKSUMS_FILE" | awk '{print $1}'
+    grep "  ${filename}\$" "$CHECKSUMS_FILE" 2>/dev/null | awk '{print $1}' || true
 }
 
 verify_checksum_quiet() {
@@ -96,33 +130,42 @@ format_bytes() {
 }
 
 print_progress() {
+    # Adapted from progress-bar.sh by Édouard Lopez
+    # https://github.com/edouard-lopez/progress-bar.sh
     local bytes="$1"
     local length="$2"
     local label="${3:-Downloading}"
     [ "$length" -gt 0 ] || return 0
 
-    local width=40
-    local percent=$(( bytes * 100 / length ))
-    [ "$percent" -gt 100 ] && percent=100
-    local on=$(( percent * width / 100 ))
-    local off=$(( width - on ))
-
-    local filled=$(printf "%*s" "$on" "")
-    filled=${filled// /█}
-    local empty=$(printf "%*s" "$off" "")
-    empty=${empty// /░}
-
-    local dl_str total_str
+    local dl_str total_str label_line
     dl_str="$(format_bytes "$bytes")"
     total_str="$(format_bytes "$length")"
+    label_line="${label}  ${dl_str} / ${total_str}"
+
+    # Bar width matches the label text length
+    local space_reserved=6   # reserved for " |XXX%"
+    local width=${#label_line}
+    [ "$width" -lt 10 ] && width=10
+
+    local percent=$(( bytes * 100 / length ))
+    [ "$percent" -gt 100 ] && percent=100
+
+    local fit_to_screen=1
+    local duration=$width
+    local elapsed=$(( percent * duration / 100 ))
+
+    local bar=""
+    local i
+    for (( i=0; i<elapsed; i++ )); do bar+="▇"; done
+    for (( i=elapsed; i<duration; i++ )); do bar+=" "; done
 
     # Two-line display: label on line 1, bar on line 2
-    printf "\r\033[K${MUTED}%s  %s / %s${NC}\n\r\033[K${PINK}%s${MUTED}%s${NC} ${PINK}%3d%%${NC}\033[1A" \
-        "$label" "$dl_str" "$total_str" "$filled" "$empty" "$percent"
+    printf "\r\033[K${MUTED}%s${NC}\n\r\033[K${PINK}%s${NC}| ${PINK}%3d%%${NC}\033[1A\r" \
+        "$label_line" "$bar" "$percent"
 }
 
-clear_progress() {
-    # Move past both lines and show cursor, keeping everything visible
+end_progress() {
+    # Move cursor past the two-line progress display and restore cursor visibility
     printf "\n\n\033[?25h"
 }
 
@@ -138,9 +181,8 @@ download_with_progress() {
     length=${length:-0}
 
     if [ "$length" -gt 0 ] && [ -t 2 ]; then
-        trap 'printf "\n\n\033[?25h"; exit 1' INT
         printf "\033[?25l\n"
-        curl -sL --connect-timeout 10 --speed-limit 1024 --speed-time 30 "$url" -o "$output" --write-out "" 2>/dev/null &
+        curl -sL "$url" -o "$output" --write-out "" 2>/dev/null &
         local curl_pid=$!
 
         while kill -0 "$curl_pid" 2>/dev/null; do
@@ -154,8 +196,7 @@ download_with_progress() {
         wait "$curl_pid"
         local ret=$?
         print_progress "$length" "$length" "$label"
-        clear_progress
-        trap - INT
+        end_progress
         return $ret
     else
         curl -fL --progress-bar "$url" -o "$output"
@@ -241,31 +282,35 @@ print_banner() {
 }
 
 download_archive() {
-    local cache_dir="${BASE_DIR}/cache"
-    mkdir -p "$cache_dir"
+    mkdir -p "$CACHE_DIR"
 
     if [ "$OS" = "windows" ]; then
-        local archive_name="windows-${ARCH}-slp.zip"
-        CACHED_ARCHIVE="${cache_dir}/slp-${VERSION}-${OS}-${ARCH}.zip"
+        CACHED_ARCHIVE="${CACHE_DIR}/slp-${VERSION}-${OS}-${ARCH}.zip"
     else
-        CACHED_ARCHIVE="${cache_dir}/slp-${VERSION}-${OS}-${ARCH}.tar.gz"
+        CACHED_ARCHIVE="${CACHE_DIR}/slp-${VERSION}-${OS}-${ARCH}.tar.gz"
     fi
 
-    # Skip download if cached archive matches
-    if [ "$OS" = "darwin" ]; then
-        local archive_name="darwin-${ARCH}-slp.tar.gz"
+    # Use cached archive if it exists and checksum matches
+    if [ -f "$CACHED_ARCHIVE" ]; then
+        local archive_name="${OS}-${ARCH}-slp.tar.gz"
+        [ "$OS" = "windows" ] && archive_name="${OS}-${ARCH}-slp.zip"
         local expected_sha256
         expected_sha256="$(get_expected_sha256 "$archive_name")"
 
-        if [ -n "$expected_sha256" ] && [ -f "$CACHED_ARCHIVE" ] && verify_checksum_quiet "$CACHED_ARCHIVE" "$expected_sha256"; then
-            echo -e "\n${MUTED}Using cached archive for ${NC}smartloop${MUTED} version: ${NC}${VERSION}"
+        if [ -z "$expected_sha256" ] || verify_checksum_quiet "$CACHED_ARCHIVE" "$expected_sha256"; then
+            echo -e "${MUTED}Hit:1 ${CACHE_DIR} smartloop ${VERSION}${NC}"
             return 0
         fi
+    fi
 
-        download_with_progress "${BASE_URL}/${archive_name}" "$CACHED_ARCHIVE" "Downloading Smartloop v${VERSION}"
+    if [ "$OS" = "darwin" ]; then
+        local archive_name="darwin-${ARCH}-slp.tar.gz"
 
+        download_with_progress "${BASE_URL}/${archive_name}" "$CACHED_ARCHIVE" "Get:1 ${BASE_URL} smartloop ${VERSION}"
+
+        local expected_sha256
+        expected_sha256="$(get_expected_sha256 "$archive_name")"
         if [ -n "$expected_sha256" ]; then
-            echo -e "${MUTED}Verifying checksum...${NC}"
             verify_checksum "$CACHED_ARCHIVE" "$expected_sha256"
         fi
 
@@ -274,7 +319,7 @@ download_archive() {
         local parts_dir
         parts_dir="$(mktemp -d)"
         local part_prefix="linux-${ARCH}-slp.tar.gz.part-"
-        local dl_label="Downloading Smartloop v${VERSION}"
+        local dl_label="Get:1 ${BASE_URL} smartloop ${VERSION}"
 
         # Discover available parts and compute total size
         local available_parts=()
@@ -293,7 +338,6 @@ download_archive() {
 
         # Download all parts with a single combined progress bar
         local downloaded_so_far=0
-        trap 'printf "\n\n\033[?25h"; exit 1' INT
         printf "\033[?25l\n"
         for suffix in "${available_parts[@]}"; do
             local part_url="${BASE_URL}/${part_prefix}${suffix}"
@@ -325,28 +369,19 @@ download_archive() {
             fi
         done
         print_progress "$total_size" "$total_size" "$dl_label"
-        clear_progress
-        trap - INT
+        end_progress
 
-        echo -e "${MUTED}Processing...${NC}"
         cat "${parts_dir}/${part_prefix}"* > "$CACHED_ARCHIVE"
         rm -rf "$parts_dir"
 
     elif [ "$OS" = "windows" ]; then
         local archive_name="windows-${ARCH}-slp.zip"
+
+        download_with_progress "${BASE_URL}/${archive_name}" "$CACHED_ARCHIVE" "Get:1 ${BASE_URL} smartloop ${VERSION}"
+
         local expected_sha256
         expected_sha256="$(get_expected_sha256 "$archive_name")"
-
-        if [ -n "$expected_sha256" ] && [ -f "$CACHED_ARCHIVE" ] && verify_checksum_quiet "$CACHED_ARCHIVE" "$expected_sha256"; then
-            echo -e "\n${MUTED}Using cached archive for ${NC}smartloop${MUTED} version: ${NC}${VERSION}"
-            return 0
-        fi
-
-        echo -e "\n${MUTED}Downloading ${NC}smartloop${MUTED} version: ${NC}${VERSION}"
-        download_with_progress "${BASE_URL}/${archive_name}" "$CACHED_ARCHIVE"
-
         if [ -n "$expected_sha256" ]; then
-            echo -e "${MUTED}Verifying checksum...${NC}"
             verify_checksum "$CACHED_ARCHIVE" "$expected_sha256"
         fi
     fi
@@ -354,7 +389,7 @@ download_archive() {
 
 extract_archive() {
     local tmpdir="$1"
-    echo -e "${MUTED}Extracting...${NC}"
+    echo -e "${MUTED}Unpacking smartloop (${VERSION}) ...${NC}"
     if [ "$OS" = "windows" ]; then
         unzip -qo "$CACHED_ARCHIVE" -d "$tmpdir"
     else
@@ -362,16 +397,132 @@ extract_archive() {
     fi
 }
 
+bootstrap_model() {
+    local port_file="${BASE_DIR}/server.port"
+    local port=8000
+
+    if [ -f "$port_file" ]; then
+        port="$(cat "$port_file")"
+    fi
+
+    local base="http://127.0.0.1:${port}"
+    local bootstrap_url="${base}/v1/bootstrap"
+
+    # Wait for the server to be healthy before calling bootstrap
+    echo -e "${MUTED}Waiting for smartloop to be ready...${NC}"
+    local attempts=0
+    while [ $attempts -lt 30 ]; do
+        if curl -sf "${base}/health" >/dev/null 2>&1; then
+            break
+        fi
+        # Re-read port file in case it was written after service start
+        if [ -f "$port_file" ]; then
+            port="$(cat "$port_file")"
+            base="http://127.0.0.1:${port}"
+            bootstrap_url="${base}/v1/bootstrap"
+        fi
+        sleep 1
+        attempts=$((attempts + 1))
+    done
+
+    if [ $attempts -ge 30 ]; then
+        echo -e "${RED}Server did not become healthy in time.${NC}"
+        return 1
+    fi
+
+    echo -e "${MUTED}Setting up model for smartloop (${VERSION}) ...${NC}"
+
+    # Stream SSE events from the bootstrap endpoint
+    local showing_progress=false
+    local line event_type=""
+
+    printf "\033[?25l"
+
+    curl -sN -X POST "$bootstrap_url" 2>/dev/null | while IFS= read -r line; do
+        # Strip carriage return
+        line="${line%$'\r'}"
+
+        # Parse SSE event type
+        if [[ "$line" == event:* ]]; then
+            event_type="${line#event:}"
+            event_type="${event_type# }"
+            continue
+        fi
+
+        # Skip non-data lines
+        if [[ "$line" != data:* ]]; then
+            [ -z "$line" ] && event_type=""
+            continue
+        fi
+
+        local data="${line#data:}"
+        data="${data# }"
+
+        # Extract JSON fields using lightweight parsing
+        local downloaded total filename status message
+        downloaded="$(echo "$data" | sed -n 's/.*"downloaded"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p')"
+        total="$(echo "$data" | sed -n 's/.*"total"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p')"
+        filename="$(echo "$data" | sed -n 's/.*"filename"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+        status="$(echo "$data" | sed -n 's/.*"status"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+        message="$(echo "$data" | sed -n 's/.*"message"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+
+        # Progress event — download bytes
+        if [ -n "$downloaded" ] && [ -n "$total" ] && [ "$total" -gt 0 ] 2>/dev/null; then
+            showing_progress=true
+            local friendly_name="${filename:-model}"
+            print_progress "$downloaded" "$total" "Downloading ${friendly_name}"
+
+        # Complete event
+        elif [ "$event_type" = "complete" ] || [ "$status" = "completed" ]; then
+            if $showing_progress; then
+                end_progress
+                showing_progress=false
+            fi
+            [ -n "$message" ] && echo -e "${GREEN}${message}${NC}"
+
+        # Error event
+        elif [ "$event_type" = "error" ] || [ "$status" = "error" ]; then
+            if $showing_progress; then
+                end_progress
+                showing_progress=false
+            fi
+            [ -n "$message" ] && echo -e "${RED}${message}${NC}"
+
+        # Status messages (skip "Downloading..." since bar shows it)
+        elif [ -n "$message" ]; then
+            case "$message" in
+                [Dd]ownloading*) ;;
+                *)
+                    if $showing_progress; then
+                        end_progress
+                        showing_progress=false
+                    fi
+                    echo -e "${MUTED}${message}${NC}"
+                    ;;
+            esac
+        fi
+
+        event_type=""
+    done
+
+    printf "\033[?25h"
+}
+
 install_smartloop() {
+    echo -e "${MUTED}Reading package lists...${NC} "
     detect_platform
+    echo -e "${MUTED}Reading package lists... Done${NC}"
 
     # Skip download + extract if this version is already installed
     local slp_existing="${INSTALL_DIR}/slp"
     [ "$OS" = "windows" ] && slp_existing="${INSTALL_DIR}/slp.exe"
 
     if [ -x "$slp_existing" ]; then
-        echo -e "\n${MUTED}Version ${NC}${VERSION}${MUTED} is already installed.${NC}"
+        echo -e "${MUTED}smartloop is already the newest version (${VERSION}).${NC}"
     else
+        echo -e "${MUTED}The following NEW packages will be installed:${NC}"
+        echo -e "  ${BOLD}smartloop${NC}"
+
         fetch_checksums
 
         download_archive
@@ -380,9 +531,11 @@ install_smartloop() {
         tmpdir="$(mktemp -d)"
         trap 'rm -rf "${tmpdir:-}" "${CHECKSUMS_FILE:-}"' EXIT
 
+        echo -e "${MUTED}Selecting previously unselected package smartloop.${NC}"
+
         extract_archive "$tmpdir"
 
-        echo -e "${MUTED}Installing to ${NC}${INSTALL_DIR}${MUTED}...${NC}"
+        echo -e "${MUTED}Setting up smartloop (${VERSION}) ...${NC}"
         mkdir -p "$INSTALL_DIR"
         rm -rf "${INSTALL_DIR:?}/"*
         cp -r "${tmpdir}/slp/"* "$INSTALL_DIR/"
@@ -401,7 +554,6 @@ install_smartloop() {
     local slp_bin="${INSTALL_DIR}/slp"
     [ "$OS" = "windows" ] && slp_bin="${INSTALL_DIR}/slp.exe"
 
-    echo -e "${MUTED}Verifying installation...${NC}"
     if ! "$slp_bin" --help &>/dev/null; then
         error "Installation verification failed: 'slp --help' did not succeed"
     fi
@@ -432,25 +584,15 @@ install_smartloop() {
         fi
     fi
 
-    # Skip service setup if already running
-    if "$slp_bin" status &>/dev/null; then
-        echo -e "${MUTED}Background service is already running.${NC}"
-    else
-        echo -e "${MUTED}Starting background service...${NC}"
-        if [ "$OS" = "linux" ]; then
-            setup_systemd_service
-        elif [ "$OS" = "darwin" ]; then
-            setup_launchd_service
-        fi
+    echo -e "${MUTED}Processing triggers for smartloop (${VERSION}) ...${NC}"
+    if [ "$OS" = "linux" ]; then
+        setup_systemd_service
+    elif [ "$OS" = "darwin" ]; then
+        setup_launchd_service
     fi
 
-    # Initialize the model so users don't see download progress on first launch
-    echo -e "${MUTED}Initializing model...${NC}"
-    if command -v timeout &>/dev/null; then
-        timeout 300 "$slp_bin" init 2>/dev/null || echo -e "${MUTED}Model download timed out. Run ${NC}slp init${MUTED} to retry.${NC}"
-    else
-        "$slp_bin" init 2>/dev/null || true
-    fi
+    # Bootstrap the model via the SSE API so we can show download progress
+    bootstrap_model
 
     print_banner
 }

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 INSTALL_DIR="$HOME/.smartloop"
+CACHE_DIR="$HOME/.cache/smartloop"
 LEGACY_INSTALL_DIR="$HOME/.slp"
 SERVICE_FILE="$HOME/.config/systemd/user/smartloop.service"
 LEGACY_SERVICE_FILE="/etc/systemd/system/smartloop.service"
@@ -73,6 +74,12 @@ uninstall_smartloop() {
     if [ -d "$INSTALL_DIR" ]; then
         info "Removing ${INSTALL_DIR}..."
         rm -rf "$INSTALL_DIR"
+    fi
+
+    # Remove cache directory
+    if [ -d "$CACHE_DIR" ]; then
+        info "Removing cache ${CACHE_DIR}..."
+        rm -rf "$CACHE_DIR"
     fi
 
     # Remove legacy .slp folder
