@@ -15,6 +15,7 @@ from textual.widgets import Static
 
 from tui.events import SSEDone, SSEStatus, SSEUsage, SSEContent, parse_sse_stream
 from tui.theme import SLP_DARK
+from tui.widgets.selectable_static import SelectableStatic
 
 
 class Streaming:
@@ -53,7 +54,7 @@ class Streaming:
         log = self.query_one("#chat-log", VerticalScroll)
         log.scroll_end(animate=False)
 
-        reply_widget = Static("", classes="assistant-msg")
+        reply_widget = SelectableStatic("", classes="assistant-msg")
 
         payload = {
             "model": self.model_name,
@@ -145,11 +146,13 @@ class Streaming:
 
         # Re-render the final response as Rich Markdown so code blocks,
         # bold, italics etc. display correctly on any terminal.
-        if not interrupted and accumulated and reply_mounted:
-            try:
-                reply_widget.update(RichMarkdown(accumulated))
-            except Exception:
-                pass  # keep the escaped plain-text fallback on any error
+        if accumulated and reply_mounted:
+            reply_widget._copyable_text = accumulated
+            if not interrupted:
+                try:
+                    reply_widget.update(RichMarkdown(accumulated))
+                except Exception:
+                    pass  # keep the escaped plain-text fallback on any error
 
         # Metrics
         duration = time.time() - start_time
