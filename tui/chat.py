@@ -166,7 +166,7 @@ class SLPChat(
 
     def _shortcut_text(self) -> str:
         """Return the shortcut hint text based on current state."""
-        return "[#6b5b7b]<esc>[/#6b5b7b] [#4a3d5c]interrupt[/#4a3d5c]  [#6b5b7b]<ctrl+a>[/#6b5b7b] [#4a3d5c]select text[/#4a3d5c]  [#6b5b7b]<ctrl+c>[/#6b5b7b] [#4a3d5c]exit[/#4a3d5c]"
+        return "[#6b5b7b]<esc>[/#6b5b7b] [#4a3d5c]interrupt[/#4a3d5c]  [#6b5b7b]<ctrl+j>[/#6b5b7b] [#4a3d5c]new line[/#4a3d5c]"
 
     def _refresh_shortcut_bar(self) -> None:
         """Update the shortcut bar to reflect current state."""
@@ -183,7 +183,7 @@ class SLPChat(
             bar.mount(self._make_badge(self.display_dir, "muted"))
         if self._bootstrap_done:
             if self.title and self.title not in ("Playground", "project_name"):
-                bar.mount(self._make_badge(self.title, icon="▤"))
+                bar.mount(self._make_badge(self.title, icon="▤", variant="muted"))
 
         if self._attachment_names:
             for name in self._attachment_names:
