@@ -284,6 +284,11 @@ class SLPChat(
         self._append_user(text)
         self._current_worker = self._stream_response(text)
 
+    def action_open_link(self, url: str) -> None:
+        """Open a URL in the system browser."""
+        from tui.widgets.selectable_static import _open_resource
+        _open_resource(url)
+
     def action_interrupt(self) -> None:
         """Handle Escape — cancel streaming if active, ignore otherwise."""
         if self._streaming and self._current_worker is not None:

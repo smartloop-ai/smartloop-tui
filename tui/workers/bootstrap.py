@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import httpx
-from rich.markdown import Markdown as RichMarkdown
 from textual import work
 from textual.containers import VerticalScroll
 from textual.widgets import Static
@@ -17,6 +16,7 @@ from tui.events import (
     BootstrapError,
     parse_bootstrap_sse,
 )
+from tui.markdown import markdown_to_markup
 from tui.widgets import PromptTextArea
 from tui.widgets.selectable_static import SelectableStatic
 
@@ -37,7 +37,7 @@ class Bootstrap:
             if msg.role == "user":
                 log.mount(SelectableStatic(f"> {msg.content}", copyable_text=msg.content, classes="user-msg"))
             else:
-                log.mount(SelectableStatic(RichMarkdown(msg.content), copyable_text=msg.content, classes="assistant-msg"))
+                log.mount(SelectableStatic(markdown_to_markup(msg.content), copyable_text=msg.content, classes="assistant-msg"))
         log.scroll_end(animate=False)
 
     @staticmethod

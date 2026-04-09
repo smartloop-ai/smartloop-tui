@@ -7,13 +7,13 @@ import time
 import os
 
 import httpx
-from rich.markdown import Markdown as RichMarkdown
 from rich.text import Text as RichText
 from textual import work
 from textual.containers import VerticalScroll
 from textual.widgets import Static
 
 from tui.events import SSEDone, SSEStatus, SSEUsage, SSEContent, parse_sse_stream
+from tui.markdown import markdown_to_markup
 from tui.theme import SLP_DARK
 from tui.widgets.selectable_static import SelectableStatic
 
@@ -152,7 +152,7 @@ class Streaming:
             reply_widget._copyable_text = accumulated
             if not interrupted:
                 try:
-                    reply_widget.update(RichMarkdown(accumulated))
+                    reply_widget.update(markdown_to_markup(accumulated))
                 except Exception:
                     pass  # keep the escaped plain-text fallback on any error
 

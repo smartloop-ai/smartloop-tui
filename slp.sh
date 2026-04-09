@@ -33,6 +33,12 @@ case "${1:-}" in
         done
         exec "$PYTHON" main.py init "${INIT_ARGS[@]}"
         ;;
+    resume)
+        shift
+        SESSION_ID="${1:?Usage: slp.sh resume <session-id>}"
+        shift
+        exec "$PYTHON" main.py --resume "$SESSION_ID" "$@"
+        ;;
     *)
         exec "$PYTHON" main.py "$@"
         ;;
