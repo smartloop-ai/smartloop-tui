@@ -92,6 +92,7 @@ clean:
 	@rm -rf .ruff_cache
 	@rm -rf *.egg-info
 	@rm -rf build dist $(ARCHIVE_NAME) slp-notarize.zip
+	@rm -rf $(VENV)
 	@echo "Cleaned"
 
 build-binary: venv
