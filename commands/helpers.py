@@ -18,7 +18,6 @@ from requests.exceptions import RequestException
 from smartloop import __version__
 from smartloop.constants import SLP_PRIMARY
 from smartloop.server import is_server_running
-from smartloop.utils.log_utils import print_logo
 
 from commands.console import console
 
@@ -183,7 +182,6 @@ def stream_from_api(
 
 
 def print_exit_message(session_id: str) -> None:
-    print_logo(version=__version__, console=console)
     console.print("\n[bold blue]Bye![/bold blue]")
     console.print(f"Resume conversation with:\n[dim]slp --resume={session_id}[/dim]")
 
