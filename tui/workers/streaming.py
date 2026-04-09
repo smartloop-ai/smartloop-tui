@@ -7,8 +7,8 @@ import time
 import os
 
 import httpx
-from rich.markup import escape as _rich_escape
 from rich.markdown import Markdown as RichMarkdown
+from rich.text import Text as RichText
 from textual import work
 from textual.containers import VerticalScroll
 from textual.widgets import Static
@@ -113,7 +113,7 @@ class Streaming:
                                 token_count += 1
                                 accumulated += content
                                 self._context_used += 1
-                                reply_widget.update(_rich_escape(accumulated))
+                                reply_widget.update(RichText(accumulated))
                                 try:
                                     self.query_one("#cost-badge", Static).update(
                                         f"[#6b5b7b]{self._context_used:,}[/#6b5b7b] [dim]token(s) processed[/dim]"
@@ -125,7 +125,9 @@ class Streaming:
         except asyncio.CancelledError:
             interrupted = True
             if accumulated:
-                reply_widget.update(accumulated + "\n\n[dim][interrupted][/dim]")
+                interrupted_text = RichText(accumulated)
+                interrupted_text.append("\n\n[interrupted]", style="dim")
+                reply_widget.update(interrupted_text)
         except httpx.HTTPStatusError:
             self._append_system("Request failed")
             await self._check_connected()
