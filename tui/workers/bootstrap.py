@@ -18,6 +18,7 @@ from tui.events import (
     parse_bootstrap_sse,
 )
 from tui.widgets import PromptTextArea
+from tui.widgets.selectable_static import SelectableStatic
 
 class Bootstrap:
     """Mixin for _render_block_bar, _run_bootstrap."""
@@ -34,9 +35,9 @@ class Bootstrap:
         log = self.query_one("#chat-log", VerticalScroll)
         for msg in history:
             if msg.role == "user":
-                log.mount(Static(f"> {msg.content}", classes="user-msg"))
+                log.mount(SelectableStatic(f"> {msg.content}", copyable_text=msg.content, classes="user-msg"))
             else:
-                log.mount(Static(RichMarkdown(msg.content), classes="assistant-msg"))
+                log.mount(SelectableStatic(RichMarkdown(msg.content), copyable_text=msg.content, classes="assistant-msg"))
         log.scroll_end(animate=False)
 
     @staticmethod

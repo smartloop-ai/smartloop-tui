@@ -89,7 +89,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --extra-index-url "${{ secrets.CUSTOM_PYPI_INDEX }}" -r requirements.txt
-          pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu126
+          pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu124
           pip install pyinstaller
 
       - name: Build

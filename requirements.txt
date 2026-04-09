@@ -1,5 +1,5 @@
 pydantic==2.12.5
-pydantic-settings==2.5.2
+pydantic-settings>=2.10.1
 rich>=13.7.0
 prompt_toolkit>=3.0.47
 cryptography>=43.0.0
