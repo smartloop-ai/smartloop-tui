@@ -39,13 +39,13 @@ brew install smartloop
 **From source:**
 
 > [!NOTE]
-> Requires Python 3.11. For NVIDIA GPU acceleration, install [CUDA 12.6](https://developer.nvidia.com/cuda-12-6-0-download-archive) before proceeding.
+> Requires Python 3.11. For NVIDIA GPU acceleration on Linux/Windows, install [CUDA 12.4](https://developer.nvidia.com/cuda-12-4-0-download-archive) before proceeding. The build step auto-creates and activates a virtual environment, then detects your GPU backend — Metal on macOS, CUDA on Linux/Windows with NVIDIA.
 
 ```bash
 git clone https://github.com/smartloop-ai/smartloop.git
 cd smartloop
-pip install -r requirements.txt
-python main.py
+make build   # creates and activates .venv, installs dependencies, and configures GPU backend
+make test    # verifies CLI and GPU offload support
 ```
 
 ### Uninstall
@@ -108,7 +108,7 @@ This will print details like current GPU being detected, loaded project and cont
 |-------------|-------------|----------|
 | OS | macOS (Apple Silicon) or Linux (x86_64) or WSL | Yes |
 | Python | 3.11+ | Yes |
-| CUDA | 12.6+ (NVIDIA GPU acceleration) Metal | No |
+| CUDA | 12.6+ (NVIDIA GPU acceleration) Metal | No (defaults to CPU) |
 | Metal| Bespoke on mac | yes |
 
 ### Troubleshooting
