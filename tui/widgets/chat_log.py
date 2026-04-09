@@ -10,6 +10,7 @@ from smartloop import __version__
 from smartloop.constants import LOGO
 
 from tui.constants import SLASH_COMMANDS
+from tui.widgets.selectable_static import SelectableStatic
 
 
 class ChatLog:
@@ -20,12 +21,12 @@ class ChatLog:
 
     def _append_user(self, text: str) -> None:
         log = self.query_one("#chat-log", VerticalScroll)
-        log.mount(Static(f"> {text}", classes="user-msg"))
+        log.mount(SelectableStatic(f"> {text}", copyable_text=text, classes="user-msg"))
         log.scroll_end(animate=False)
 
     def _append_system(self, text: str) -> None:
         log = self.query_one("#chat-log", VerticalScroll)
-        log.mount(Static(text, classes="system-msg"))
+        log.mount(SelectableStatic(text, copyable_text=text, classes="system-msg"))
         log.scroll_end(animate=False)
 
     def _show_welcome(self) -> None:

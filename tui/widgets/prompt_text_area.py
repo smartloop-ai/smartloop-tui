@@ -12,6 +12,12 @@ from tui.widgets.command_menu import CommandMenu
 class PromptTextArea(TextArea):
     """TextArea subclass: Enter submits, Ctrl+A selects all."""
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._history: list[str] = []
+        self._history_index: int = -1
+        self._draft: str = ""
+
     def _on_paste(self, event: events.Paste) -> None:
         """Strip backslash-escaped spaces (e.g. foo\\ bar.txt) on paste."""
         cleaned = event.text
@@ -68,6 +74,30 @@ class PromptTextArea(TextArea):
                 menu.display = False
                 return
 
+        # History navigation — only when cursor is on first/last line
+        if event.key == "up" and self.cursor_location[0] == 0 and self._history:
+            event.stop()
+            event.prevent_default()
+            if self._history_index == -1:
+                self._draft = self.text
+            if self._history_index < len(self._history) - 1:
+                self._history_index += 1
+                self.load_text(self._history[self._history_index])
+                self.action_cursor_line_end()
+            return
+        if event.key == "down" and self._history_index >= 0:
+            row_count = self.document.line_count
+            if self.cursor_location[0] == row_count - 1:
+                event.stop()
+                event.prevent_default()
+                self._history_index -= 1
+                if self._history_index == -1:
+                    self.load_text(self._draft)
+                else:
+                    self.load_text(self._history[self._history_index])
+                self.action_cursor_line_end()
+                return
+
         if event.key in ("shift+enter", "ctrl+j"):
             event.stop()
             event.prevent_default()
@@ -76,6 +106,11 @@ class PromptTextArea(TextArea):
         if event.key == "enter":
             event.stop()
             event.prevent_default()
+            text = self.text.strip()
+            if text and (not self._history or self._history[0] != text):
+                self._history.insert(0, text)
+            self._history_index = -1
+            self._draft = ""
             self.post_message(self.Submitted(self))
             return
         if event.key == "ctrl+a":

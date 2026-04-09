@@ -7,14 +7,15 @@ import time
 import os
 
 import httpx
-from rich.markup import escape as _rich_escape
 from rich.markdown import Markdown as RichMarkdown
+from rich.text import Text as RichText
 from textual import work
 from textual.containers import VerticalScroll
 from textual.widgets import Static
 
 from tui.events import SSEDone, SSEStatus, SSEUsage, SSEContent, parse_sse_stream
 from tui.theme import SLP_DARK
+from tui.widgets.selectable_static import SelectableStatic
 
 
 class Streaming:
@@ -53,7 +54,7 @@ class Streaming:
         log = self.query_one("#chat-log", VerticalScroll)
         log.scroll_end(animate=False)
 
-        reply_widget = Static("", classes="assistant-msg")
+        reply_widget = SelectableStatic("", classes="assistant-msg")
 
         payload = {
             "model": self.model_name,
@@ -112,7 +113,7 @@ class Streaming:
                                 token_count += 1
                                 accumulated += content
                                 self._context_used += 1
-                                reply_widget.update(_rich_escape(accumulated))
+                                reply_widget.update(RichText(accumulated))
                                 try:
                                     self.query_one("#cost-badge", Static).update(
                                         f"[#6b5b7b]{self._context_used:,}[/#6b5b7b] [dim]token(s) processed[/dim]"
@@ -124,7 +125,9 @@ class Streaming:
         except asyncio.CancelledError:
             interrupted = True
             if accumulated:
-                reply_widget.update(accumulated + "\n\n[dim][interrupted][/dim]")
+                interrupted_text = RichText(accumulated)
+                interrupted_text.append("\n\n[interrupted]", style="dim")
+                reply_widget.update(interrupted_text)
         except httpx.HTTPStatusError:
             self._append_system("Request failed")
             await self._check_connected()
@@ -145,11 +148,13 @@ class Streaming:
 
         # Re-render the final response as Rich Markdown so code blocks,
         # bold, italics etc. display correctly on any terminal.
-        if not interrupted and accumulated and reply_mounted:
-            try:
-                reply_widget.update(RichMarkdown(accumulated))
-            except Exception:
-                pass  # keep the escaped plain-text fallback on any error
+        if accumulated and reply_mounted:
+            reply_widget._copyable_text = accumulated
+            if not interrupted:
+                try:
+                    reply_widget.update(RichMarkdown(accumulated))
+                except Exception:
+                    pass  # keep the escaped plain-text fallback on any error
 
         # Metrics
         duration = time.time() - start_time

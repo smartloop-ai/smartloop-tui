@@ -24,28 +24,16 @@ Copy and paste the following script to your terminal to get started:
 curl -fsSL https://smartloop.ai/install | sh
 ```
 
-Install using [Homebrew](https://brew.sh) (recommended):
-
-**macOS**
+Optionally, on macos install using [Homebrew](https://brew.sh):
 
 ```bash
 brew tap smartloop-ai/smartloop
 brew install smartloop
 ```
 
-**Linux**
-
-```bash
-# Install Homebrew for Linux first (if not already installed)
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-brew tap smartloop-ai/smartloop
-brew install smartloop
-```
 
 > [!TIP]
 > To upgrade: `brew update && brew upgrade smartloop`
-
 
 
 **From source:**
@@ -57,18 +45,20 @@ brew install smartloop
 git clone https://github.com/smartloop-ai/smartloop.git
 cd smartloop
 pip install -r requirements.txt
-python main.py run
+python main.py
 ```
 
 ### Uninstall
 
 ```bash
-# If installed via Homebrew
+# If installed via curl
+curl -fsSL https://smartloop.ai/uninstall | sh
+```
+If install using homebrew , pase the folllowing in your terminal:
+
+```bash
 brew uninstall smartloop
 brew untap smartloop-ai/smartloop
-
-# If installed via curl
-curl -fsSL https://smartloop.ai/uninstall | bash
 ```
 
 ### Usage
@@ -77,53 +67,40 @@ curl -fsSL https://smartloop.ai/uninstall | bash
 # View available commands
 slp --help
 
-# Initialize a new project
-slp init -t <developer_token>
+# Initialize the workspace with a different model:
+slp init -t <developer_token> --model=<llama3-1b>
 
-# Add a document
-slp add document.pdf
-
-# Run interactive chat
-slp run
-
-# no tui 
-slp run --no-tui
+# start the tui
+slp 
 ```
 
+> [!TIP]
+> You can generate a developer token from the [Console](https://app.smartloop.ai/).
 
-### Project Management
+
+### Service Status
+
+In order ensure that your service is running correctly, type the following command in your terminal:
 
 ```bash
-slp projects create <name>
-slp projects list
-slp projects switch <name>
 slp status
 ```
+This will print details like current GPU being detected, loaded project and context available based on the size of your VRAM or system memeory in case macos based systems
 
-### Server Management
-
-SLP includes a background API server compatible with OpenAI's chat completion format.
-
-```bash
-slp server start
-slp server stop
-slp server status
-```
-
-On macOS, the server can also be managed via `brew services` (if installed using Homebrew):
-
-```bash
-brew services start smartloop
-brew services stop smartloop
-```
-
-On Linux/WSL, the installer creates a systemd user service:
-
-```bash
-systemctl --user start smartloop
-systemctl --user stop smartloop
-systemctl --user status smartloop
-```
+| Property | Value |
+|----------|-------|
+| Server | http://127.0.0.1:63838 |
+| PID | 17320 |
+| Model loaded | True |
+| Model | gemma3-1b |
+| Quantization | Q8_0 |
+| Context window | 31232 |
+| Flash attention | False |
+| Model size | 1020 MB |
+| Memory usage | 8% |
+| GPU | Apple Silicon (MPS) |
+| Active project | Personal (id=71db0b23-6d6d-401a-b04e-cbb64e7e9636) |
+| Project model | gemma3-1b |
 
 ### Requirements
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SLP Framework - Full CLI with persistent background API server for inference and training.
+Smartloop - An SLM framework for inferencing and tuning models on edge devices.
 
 The server is started automatically if not running, and stays running
 to avoid reloading the model on each invocation.
@@ -109,6 +109,10 @@ def main():
     init_parser.add_argument(
         "--developer-token", "-t",
         help="Smartloop developer token to download model (falls back to SLP_DEVELOPER_TOKEN in .env)",
+    )
+    init_parser.add_argument(
+        "--hf",
+        help="Hugging Face token for downloading models from Hugging Face Hub",
     )
 
     # Run command
