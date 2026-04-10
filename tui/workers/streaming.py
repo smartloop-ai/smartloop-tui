@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import time
 import os
 
@@ -13,9 +14,11 @@ from textual import work
 from textual.containers import VerticalScroll
 from textual.widgets import Static
 
+from tui.constants import LOADING_MESSAGES
 from tui.events import SSEDone, SSEStatus, SSEUsage, SSEContent, parse_sse_stream
 from tui.theme import SLP_DARK
 from tui.widgets.selectable_static import SelectableStatic
+from tui.widgets import PromptTextArea
 
 
 class Streaming:
@@ -46,10 +49,9 @@ class Streaming:
         self._streaming = True
         self._refresh_shortcut_bar()
 
-        from tui.widgets import PromptTextArea
         prompt_box = self.query_one("#prompt-box", PromptTextArea)
         prompt_box.disabled = True
-        self._update_loading("[*] Generating response...")
+        self._update_loading(random.choice(LOADING_MESSAGES))
 
         log = self.query_one("#chat-log", VerticalScroll)
         log.scroll_end(animate=False)
@@ -100,7 +102,7 @@ class Streaming:
                                 if s == "processing":
                                     self._update_loading(msg)
                                 elif s in ("completed", "error"):
-                                    self._update_loading("[*] Generating response...")
+                                    self._update_loading(random.choice(LOADING_MESSAGES))
                                 log.scroll_end(animate=False)
                             case SSEUsage(total_tokens=total, max_context_tokens=max_ctx):
                                 self._context_used = total
