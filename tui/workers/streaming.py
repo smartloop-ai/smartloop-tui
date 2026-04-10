@@ -49,7 +49,7 @@ class Streaming:
         from tui.widgets import PromptTextArea
         prompt_box = self.query_one("#prompt-box", PromptTextArea)
         prompt_box.disabled = True
-        self._update_loading("Generating response...")
+        self._update_loading("[*] Generating response...")
 
         log = self.query_one("#chat-log", VerticalScroll)
         log.scroll_end(animate=False)
@@ -100,7 +100,7 @@ class Streaming:
                                 if s == "processing":
                                     self._update_loading(msg)
                                 elif s in ("completed", "error"):
-                                    self._update_loading("Generating response...")
+                                    self._update_loading("[*] Generating response...")
                                 log.scroll_end(animate=False)
                             case SSEUsage(total_tokens=total, max_context_tokens=max_ctx):
                                 self._context_used = total

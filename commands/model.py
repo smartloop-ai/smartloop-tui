@@ -167,7 +167,7 @@ class ModelCommand(Command):
                             progress_bar.refresh()
                             progress_bar.close()
                             progress_bar = None
-                        console.print(f"[cyan][:rocket:] {message or f'{desc} complete'}[/cyan]")
+                        console.print(f"[cyan][+] {message or f'{desc} complete'}[/cyan]")
                     elif stage == "error":
                         if progress_bar is not None:
                             progress_bar.close()

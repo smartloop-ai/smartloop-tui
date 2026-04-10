@@ -96,7 +96,7 @@ class Bootstrap:
                                 )
                                 log.scroll_end(animate=False)
 
-                            case BootstrapStatus(status=st, message=_msg):
+                            case BootstrapStatus(status=st, message=msg):
                                 _done_statuses = (
                                     "download_complete", "model_ready",
                                     "creating_project", "loading", "model_loaded",
@@ -107,7 +107,16 @@ class Bootstrap:
                                 if download_label is not None and st in _done_statuses:
                                     await download_label.remove()
                                     download_label = None
-                                self._update_loading("♨ Heating up ...")
+                                _status_labels = {
+                                    "building": "[*] Building ...",
+                                    "loading": "[~] Loading ...",
+                                    "model_loaded": "[+] Model loaded",
+                                    "creating_project": "[~] Creating project ...",
+                                    "download_complete": "[+] Download complete",
+                                    "model_ready": "[+] Model ready",
+                                }
+                                label = _status_labels.get(st, msg or "[~] Heating up ...")
+                                self._update_loading(label)
 
                             case BootstrapComplete(model_name=mn, project=proj):
                                 self.model_name = mn

@@ -19,6 +19,8 @@ _DIM = "\033[0;2m"
 _NC = "\033[0m"
 
 _BAR_WIDTH = 40
+_HIDE_CURSOR = "\033[?25l"
+_SHOW_CURSOR = "\033[?25h"
 
 
 def _format_bytes(n: int) -> str:
@@ -42,13 +44,13 @@ def _render_progress(filename: str, downloaded: int, total: int) -> None:
     label = f"{_DIM}Downloading {filename}  {_format_bytes(downloaded)} / {_format_bytes(total)}{_NC}"
 
     # \033[K clears rest of line to prevent old text bleeding through
-    sys.stdout.write(f"\r\033[K{label}\n\r\033[K{bar} {_PINK}{pct:3.0f}%{_NC}\033[1A\r")
+    sys.stdout.write(f"{_HIDE_CURSOR}\r\033[K{label}\n\r\033[K{bar} {_PINK}{pct:3.0f}%{_NC}\033[1A\r")
     sys.stdout.flush()
 
 
 def _clear_progress() -> None:
     """Clear the two-line progress display."""
-    sys.stdout.write("\r\033[K\n\r\033[K\033[1A\r")
+    sys.stdout.write(f"\r\033[K\n\r\033[K\033[1A\r{_SHOW_CURSOR}")
     sys.stdout.flush()
 
 
@@ -74,7 +76,7 @@ class InitCommand(Command):
                 model_name = health.get("model_name", "unknown")
             except RequestException:
                 model_name = "unknown"
-            console.print(f"[{SLP_PRIMARY}][:white_check_mark:] Already set up with base model: {model_name}[/{SLP_PRIMARY}]")
+            console.print(f"[{SLP_PRIMARY}][+] Already set up with base model: {model_name}[/{SLP_PRIMARY}]")
             console.print(
                 "[dim]To install additional models use your developer token:[/dim]\n"
                 "[dim]  slp init --model=gemma3-4b --developer-token=<your-token>[/dim]"
@@ -176,13 +178,13 @@ class InitCommand(Command):
                 if showing_progress:
                     _clear_progress()
                     showing_progress = False
-                console.print(f"[cyan][:rocket:] {msg}[/cyan]")
+                console.print(f"[cyan][+] {msg}[/cyan]")
 
             # Project created
             elif status == "project_created":
                 project = data.get("project", {})
                 console.print(
-                    f"[green][:white_check_mark:] Project created: "
+                    f"[green][+] Project created: "
                     f"{project.get('name', '')} (id={project.get('id', '')})[/green]"
                 )
 
