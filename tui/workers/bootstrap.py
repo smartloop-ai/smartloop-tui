@@ -91,8 +91,8 @@ class Bootstrap:
                                 )
                                 friendly_fn = self._friendly_filename(fn)
                                 download_label.update(
-                                    f"[#6b5b7b]Downloading {friendly_fn}  "
-                                    f"{_format_bytes(dl)} / {_format_bytes(total)}[/#6b5b7b]"
+                                    f"Downloading {friendly_fn}  "
+                                    f"{_format_bytes(dl)} / {_format_bytes(total)}"
                                 )
                                 log.scroll_end(animate=False)
 
@@ -108,6 +108,7 @@ class Bootstrap:
                                     await download_label.remove()
                                     download_label = None
                                 _status_labels = {
+                                    "downloading": "[-] Downloading ...",
                                     "building": "[*] Building ...",
                                     "loading": "[~] Loading ...",
                                     "model_loaded": "[+] Model loaded",

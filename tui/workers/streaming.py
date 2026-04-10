@@ -100,7 +100,7 @@ class Streaming:
                                 break
                             case SSEStatus(status=s, message=msg):
                                 if s == "processing":
-                                    self._update_loading(msg)
+                                    self._update_loading(f"[*] {msg}")
                                 elif s in ("completed", "error"):
                                     self._update_loading(random.choice(LOADING_MESSAGES))
                                 log.scroll_end(animate=False)
