@@ -131,6 +131,11 @@
         padding: 1 2;
         background: #191225;
         color: #d1c4e9;
+        link-color: #ec4899;
+        link-style: underline;
+        link-color-hover: #f9a8d4;
+        link-style-hover: bold underline;
+        link-background-hover: #272036;
     }
 
     .system-msg {
