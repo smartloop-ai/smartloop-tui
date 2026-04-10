@@ -1,5 +1,17 @@
 """tui/constants.py — Slash command registry (single source of truth)."""
 
+LOADING_MESSAGES = [
+    "[~] Warming up the engines...",
+    "[+] Crunching tokens...",
+    "[?] Consulting the oracle...",
+    "[^] Summoning intelligence...",
+    "[~] Herding cats...",
+    "[>] Connecting the dots...",
+    "[#] Running the numbers...",
+    "[*] Thinking really hard...",
+    "[!] Boiling the ocean...",
+]
+
 SLASH_COMMANDS = [
     ("/attach <path>", "Attach a file to the next message"),
     ("/document add <path>", "Add a document to the project"),
