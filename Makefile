@@ -48,16 +48,16 @@ else ifeq ($(PLATFORM),linux)
     ifeq ($(HAS_NVIDIA),yes)
         LLAMA_INSTALL_CMD = $(PIP) install llama-cpp-python --prefer-binary --index-url https://abetlen.github.io/llama-cpp-python/whl/cu124 --extra-index-url=https://pypi.org/simple --force-reinstall --no-cache-dir
     else
-        # No NVIDIA GPU — use SYCL for Intel GPU acceleration
-        LLAMA_INSTALL_CMD = . /opt/intel/oneapi/setvars.sh 2>/dev/null && CMAKE_ARGS="-DGGML_SYCL=ON -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx" $(PIP) install llama-cpp-python --index-url=https://pypi.org/simple --force-reinstall --no-cache-dir
+        # No NVIDIA GPU — fall back to CPU-only build
+        LLAMA_INSTALL_CMD = $(PIP) install llama-cpp-python --index-url=https://pypi.org/simple --force-reinstall --no-cache-dir
     endif
 else ifeq ($(PLATFORM),windows)
     HAS_NVIDIA := $(shell command -v nvidia-smi >/dev/null 2>&1 && echo yes || echo no)
     ifeq ($(HAS_NVIDIA),yes)
         LLAMA_INSTALL_CMD = $(PIP) install llama-cpp-python --prefer-binary --index-url https://abetlen.github.io/llama-cpp-python/whl/cu124 --extra-index-url=https://pypi.org/simple --force-reinstall --no-cache-dir
     else
-        # No NVIDIA GPU — use SYCL for Intel GPU acceleration
-        LLAMA_INSTALL_CMD = CMAKE_ARGS="-DGGML_SYCL=ON" $(PIP) install llama-cpp-python --index-url=https://pypi.org/simple --force-reinstall --no-cache-dir
+        # No NVIDIA GPU — fall back to CPU-only build
+        LLAMA_INSTALL_CMD = $(PIP) install llama-cpp-python --index-url=https://pypi.org/simple --force-reinstall --no-cache-dir
     endif
 endif
 
