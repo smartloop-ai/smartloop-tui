@@ -73,6 +73,9 @@ build: venv
 	@echo "=== Installing llama-cpp-python ==="
 	$(LLAMA_INSTALL_CMD)
 	$(PIP) install pyinstaller --index-url=https://pypi.org/simple --force-reinstall --no-cache-dir
+	@echo "=== Building binary ==="
+	$(PYTHON) -m PyInstaller smartloop.spec
+	@echo "Build complete: $(DIST_DIR)/slp"
 
 test:
 	@echo "=== Running tests ==="
