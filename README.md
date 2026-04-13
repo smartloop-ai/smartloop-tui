@@ -21,7 +21,7 @@
 Copy and paste the following script to your terminal to get started:
 
 ```bash
-curl -fsSL https://smartloop.ai/install | sh
+curl -fsSL https://smartloop.ai/install | bash
 ```
 
 Optionally, on macos install using [Homebrew](https://brew.sh):
@@ -52,7 +52,7 @@ make test    # verifies CLI and GPU offload support
 
 ```bash
 # If installed via curl
-curl -fsSL https://smartloop.ai/uninstall | sh
+curl -fsSL https://smartloop.ai/uninstall | bash
 ```
 If install using homebrew , pase the folllowing in your terminal:
 

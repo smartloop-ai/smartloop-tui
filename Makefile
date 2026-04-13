@@ -101,8 +101,10 @@ clean:
 	@echo "Cleaned"
 
 build-binary: venv
+	@echo "=== Installing PyInstaller ==="
+	$(PIP) install pyinstaller --index-url=https://pypi.org/simple --no-cache-dir
 	@echo "=== Building v$(VERSION) for $(PLATFORM)/$(ARCH) ==="
-	@$(PYTHON) -m PyInstaller smartloop.spec
+	$(PYTHON) -m PyInstaller smartloop.spec
 	@echo "Build complete: $(DIST_DIR)/slp"
 
 sign:

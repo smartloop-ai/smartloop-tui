@@ -15,6 +15,13 @@ datas += _tmp_ret[0]
 binaries += _tmp_ret[1]
 hiddenimports += _tmp_ret[2]
 
+# Ensure smartloop/skills is bundled (collect_all may miss it)
+for sp in site.getsitepackages():
+    _skills_dir = Path(sp) / 'smartloop' / 'skills'
+    if _skills_dir.exists():
+        datas.append((str(_skills_dir), 'smartloop/skills'))
+        break
+
 # Include package metadata required at runtime (importlib.metadata lookups)
 for pkg in ['docling', 'docling-core', 'docling-ibm-models', 'docling-parse']:
     try:
@@ -76,6 +83,16 @@ try:
     import rich._unicode_data as _rud
     rud_dir = Path(_rud.__file__).parent
     datas.append((str(rud_dir), 'rich/_unicode_data'))
+except ImportError:
+    pass
+
+# Collect trl chat templates (jinja files read at import time by trl.chat_template_utils)
+try:
+    import trl
+    trl_dir = Path(trl.__file__).parent
+    chat_templates_dir = trl_dir / 'chat_templates'
+    if chat_templates_dir.exists():
+        datas.append((str(chat_templates_dir), 'trl/chat_templates'))
 except ImportError:
     pass
 
@@ -165,7 +182,7 @@ a = Analysis(
     ],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=['hooks/rthook_chroma_telemetry.py'],
+    runtime_hooks=['hooks/rthook_utf8.py', 'hooks/rthook_chroma_telemetry.py'],
     excludes=[
         '.venv',
         'venv',
