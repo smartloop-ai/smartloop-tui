@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.scripts]
-slp = "main:main"
+slp = "commands.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["commands*", "tui*"]

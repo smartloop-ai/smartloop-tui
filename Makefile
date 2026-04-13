@@ -1,4 +1,4 @@
-.PHONY: help venv install-sycl install test start build sign notarize archive release clean
+.PHONY: help venv install-sycl install test start build pack sign notarize archive release clean
 
 VENV := .venv
 PIP := $(VENV)/bin/pip
@@ -32,7 +32,8 @@ ARCHIVE_NAME := slp.tar.gz
 help:
 	@echo "Available targets:"
 	@echo "  install   - Install dependencies with GPU-accelerated llama-cpp-python"
-	@echo "  build     - Build binary with PyInstaller"
+	@echo "  build     - Install dependencies"
+	@echo "  pack   - Build binary with PyInstaller"
 	@echo "  sign      - Code sign the binary (macOS only)"
 	@echo "  notarize  - Notarize the binary with Apple (macOS only)"
 	@echo "  archive   - Create slp.tar.gz from dist/slp"
@@ -69,13 +70,14 @@ venv:
 
 build: venv
 	@echo "=== Installing dependencies ==="
+	$(PIP) install setuptools wheel --index-url=https://pypi.org/simple
 	$(PIP) install -r requirements.txt --index-url=https://pypi.org/simple
 	@echo "=== Installing llama-cpp-python ==="
 	$(LLAMA_INSTALL_CMD)
-	$(PIP) install pyinstaller --index-url=https://pypi.org/simple --force-reinstall --no-cache-dir
-	@echo "=== Building binary ==="
-	$(PYTHON) -m PyInstaller smartloop.spec
-	@echo "Build complete: $(DIST_DIR)/slp"
+	@echo "=== Installing slp CLI ==="
+	$(PIP) install --no-build-isolation --no-deps -e . --index-url=https://pypi.org/simple --no-cache-dir
+	@ln -sf .venv/bin/slp slp
+	@echo "Build complete"
 
 test:
 	@echo "=== Running tests ==="
@@ -140,7 +142,14 @@ archive:
 	tar -czf $(ARCHIVE_NAME) -C dist slp
 	@echo "Archive created: $(ARCHIVE_NAME)"
 
-release: build sign notarize archive
+pack: build
+	@echo "=== Installing PyInstaller ==="
+	$(PIP) install pyinstaller --index-url=https://pypi.org/simple --force-reinstall --no-cache-dir
+	@echo "=== Building binary ==="
+	$(PYTHON) -m PyInstaller smartloop.spec
+	@echo "Build complete: $(DIST_DIR)/slp"
+
+release: pack sign notarize archive
 	@echo "=== Release v$(VERSION) complete ==="
 
 .DEFAULT_GOAL := help

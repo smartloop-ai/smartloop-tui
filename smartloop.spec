@@ -128,7 +128,7 @@ except ImportError:
 
 
 a = Analysis(
-    ['main.py'],
+    ['commands/cli.py'],
     pathex=[],
     binaries=binaries,
     datas=datas,
