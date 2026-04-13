@@ -79,6 +79,16 @@ try:
 except ImportError:
     pass
 
+# Collect trl chat templates (jinja files read at import time by trl.chat_template_utils)
+try:
+    import trl
+    trl_dir = Path(trl.__file__).parent
+    chat_templates_dir = trl_dir / 'chat_templates'
+    if chat_templates_dir.exists():
+        datas.append((str(chat_templates_dir), 'trl/chat_templates'))
+except ImportError:
+    pass
+
 # Collect huggingface_hub templates (required for model card generation during save_pretrained)
 try:
     import huggingface_hub
@@ -165,7 +175,7 @@ a = Analysis(
     ],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=['hooks/rthook_chroma_telemetry.py'],
+    runtime_hooks=['hooks/rthook_utf8.py', 'hooks/rthook_chroma_telemetry.py'],
     excludes=[
         '.venv',
         'venv',
