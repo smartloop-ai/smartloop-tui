@@ -1,8 +1,6 @@
 .PHONY: help venv install-sycl install test start build pack sign notarize archive release clean
 
 VENV := .venv
-PIP := $(VENV)/bin/pip
-PYTHON := $(VENV)/bin/python
 
 # Detect platform: linux, darwin, or windows
 UNAME_S := $(shell uname -s)
@@ -12,6 +10,15 @@ else ifeq ($(UNAME_S),Darwin)
     PLATFORM := darwin
 else
     PLATFORM := windows
+endif
+
+# Set venv paths based on platform
+ifeq ($(PLATFORM),windows)
+    PIP := $(VENV)/Scripts/pip
+    PYTHON := $(VENV)/Scripts/python
+else
+    PIP := $(VENV)/bin/pip
+    PYTHON := $(VENV)/bin/python
 endif
 
 # Detect architecture: arm64 or amd64
@@ -46,7 +53,9 @@ ifeq ($(PLATFORM),darwin)
     LLAMA_INSTALL_CMD = CMAKE_ARGS="$(LLAMA_CMAKE_ARGS)" $(PIP) install llama-cpp-python --index-url=https://pypi.org/simple --force-reinstall --no-cache-dir
 else ifeq ($(PLATFORM),linux)
     HAS_NVIDIA := $(shell command -v nvidia-smi >/dev/null 2>&1 && echo yes || echo no)
-    ifeq ($(HAS_NVIDIA),yes)
+    ifeq ($(CUDA),1)
+        LLAMA_INSTALL_CMD = $(PIP) install llama-cpp-python --prefer-binary --index-url https://abetlen.github.io/llama-cpp-python/whl/cu124 --extra-index-url=https://pypi.org/simple --force-reinstall --no-cache-dir
+    else ifeq ($(HAS_NVIDIA),yes)
         LLAMA_INSTALL_CMD = $(PIP) install llama-cpp-python --prefer-binary --index-url https://abetlen.github.io/llama-cpp-python/whl/cu124 --extra-index-url=https://pypi.org/simple --force-reinstall --no-cache-dir
     else
         # No NVIDIA GPU — fall back to CPU-only build
@@ -54,7 +63,9 @@ else ifeq ($(PLATFORM),linux)
     endif
 else ifeq ($(PLATFORM),windows)
     HAS_NVIDIA := $(shell command -v nvidia-smi >/dev/null 2>&1 && echo yes || echo no)
-    ifeq ($(HAS_NVIDIA),yes)
+    ifeq ($(CUDA),1)
+        LLAMA_INSTALL_CMD = $(PIP) install llama-cpp-python --prefer-binary --index-url https://abetlen.github.io/llama-cpp-python/whl/cu124 --extra-index-url=https://pypi.org/simple --force-reinstall --no-cache-dir
+    else ifeq ($(HAS_NVIDIA),yes)
         LLAMA_INSTALL_CMD = $(PIP) install llama-cpp-python --prefer-binary --index-url https://abetlen.github.io/llama-cpp-python/whl/cu124 --extra-index-url=https://pypi.org/simple --force-reinstall --no-cache-dir
     else
         # No NVIDIA GPU — fall back to CPU-only build
@@ -65,7 +76,7 @@ endif
 venv:
 	@if [ ! -d "$(VENV)" ]; then \
 		echo "Creating virtual environment..."; \
-		python3 -m venv $(VENV); \
+		python -m venv $(VENV); \
 	fi
 
 build: venv
@@ -76,8 +87,12 @@ build: venv
 	$(LLAMA_INSTALL_CMD)
 	@echo "=== Installing slp CLI ==="
 	$(PIP) install --no-build-isolation --no-deps -e . --index-url=https://pypi.org/simple --no-cache-dir
+ifeq ($(PLATFORM),windows)
+	@echo "Build complete"
+else
 	@ln -sf .venv/bin/slp slp
 	@echo "Build complete"
+endif
 
 test:
 	@echo "=== Running tests ==="
