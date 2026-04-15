@@ -133,4 +133,4 @@ If issues persist, ensure NVIDIA drivers are properly installed.
 
 © 2016 Smartloop Inc.
 
-All code is licensed under the GPL, v3 or later. See [LICENSE](LICENSE) file for details.
+All code is licensed under Apache 2.0. See [LICENSE](LICENSE) file for details.
