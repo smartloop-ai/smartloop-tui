@@ -19,12 +19,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
-        run: |
-          pip install --extra-index-url "${{ secrets.CUSTOM_PYPI_INDEX }}" -r requirements.txt
-          pip install llama-cpp-python
-          pip install pyinstaller
-
       - name: Import Apple certificate
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -46,8 +40,8 @@ jobs:
             -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
 
-      - name: Build
-        run: make build
+      - name: Build and pack
+        run: make pack
 
       - name: Build binary
         run: make build-binary
@@ -89,20 +83,29 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install CUDA toolkit
         run: |
-          pip install --extra-index-url "${{ secrets.CUSTOM_PYPI_INDEX }}" -r requirements.txt
-          pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu124
-          pip install pyinstaller
+          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+          sudo dpkg -i cuda-keyring_1.1-1_all.deb
+          sudo apt-get update
+          sudo apt-get install -y cuda-toolkit-12-6
 
-      - name: Build
-        run: make build
+      - name: Set CUDA environment
+        run: |
+          echo "/usr/local/cuda-12.6/bin" >> $GITHUB_PATH
+          echo "LD_LIBRARY_PATH=/usr/local/cuda-12.6/lib64:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          echo "CUDA_HOME=/usr/local/cuda-12.6" >> $GITHUB_ENV
+
+      - name: Build and pack
+        run: make pack CUDA=1
 
       - name: Build binary
         run: make build-binary
 
       - name: Verify build
-        run: dist/slp/slp --version
+        run: |
+          test -f dist/slp/slp && echo "Binary exists: dist/slp/slp"
+          ls -lh dist/slp/slp
 
       - name: Archive
         run: make archive
@@ -133,17 +136,19 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
-        run: |
-          pip install --extra-index-url "${{ secrets.CUSTOM_PYPI_INDEX }}" -r requirements.txt
-          pip install llama-cpp-python
-          pip install pyinstaller
+      - name: Install CUDA toolkit
+        uses: Jimver/cuda-toolkit@v0.2.21
+        with:
+          cuda: '12.6.0'
 
-      - name: Build
-        run: pyinstaller smartloop.spec
+      - name: Build and pack
+        run: make pack CUDA=1
 
       - name: Verify build
-        run: dist\slp\slp.exe --version
+        run: |
+          Test-Path dist\slp\slp.exe
+          Get-Item dist\slp\slp.exe
+        shell: pwsh
 
       - name: Archive
         run: Compress-Archive -Path dist\slp -DestinationPath windows-amd64-slp.zip

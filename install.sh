@@ -365,116 +365,6 @@ extract_archive() {
     fi
 }
 
-bootstrap_model() {
-    local port_file="${BASE_DIR}/server.port"
-    local port=8000
-
-    if [ -f "$port_file" ]; then
-        port="$(cat "$port_file")"
-    fi
-
-    local base="http://127.0.0.1:${port}"
-    local bootstrap_url="${base}/v1/bootstrap"
-
-    # Wait for the server to be healthy before calling bootstrap
-    echo -e "${MUTED}Waiting for smartloop to start ...${NC}"
-    local attempts=0
-    while [ $attempts -lt 30 ]; do
-        if curl -sf "${base}/health" >/dev/null 2>&1; then
-            break
-        fi
-        # Re-read port file in case it was written after service start
-        if [ -f "$port_file" ]; then
-            port="$(cat "$port_file")"
-            base="http://127.0.0.1:${port}"
-            bootstrap_url="${base}/v1/bootstrap"
-        fi
-        sleep 1
-        attempts=$((attempts + 1))
-    done
-
-    if [ $attempts -ge 30 ]; then
-        echo -e "${RED}Server did not become healthy in time.${NC}"
-        return 1
-    fi
-
-    echo -e "${MUTED}Fetching model for smartloop (${VERSION}) ...${NC}"
-
-    # Stream SSE events from the bootstrap endpoint
-    local showing_progress=false
-    local line event_type=""
-
-    printf "\033[?25l\n"
-
-    curl -sN -X POST "$bootstrap_url" 2>/dev/null | while IFS= read -r line; do
-        # Strip carriage return
-        line="${line%$'\r'}"
-
-        # Parse SSE event type
-        if [[ "$line" == event:* ]]; then
-            event_type="${line#event:}"
-            event_type="${event_type# }"
-            continue
-        fi
-
-        # Skip non-data lines
-        if [[ "$line" != data:* ]]; then
-            [ -z "$line" ] && event_type=""
-            continue
-        fi
-
-        local data="${line#data:}"
-        data="${data# }"
-
-        # Extract JSON fields using lightweight parsing
-        local downloaded total filename status message
-        downloaded="$(echo "$data" | sed -n 's/.*"downloaded"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p')"
-        total="$(echo "$data" | sed -n 's/.*"total"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p')"
-        filename="$(echo "$data" | sed -n 's/.*"filename"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
-        status="$(echo "$data" | sed -n 's/.*"status"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
-        message="$(echo "$data" | sed -n 's/.*"message"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
-
-        # Progress event — download bytes
-        if [ -n "$downloaded" ] && [ -n "$total" ] && [ "$total" -gt 0 ] 2>/dev/null; then
-            showing_progress=true
-            local friendly_name="${filename:-model}"
-            progress_bar "$downloaded" "$total" "Downloading ${friendly_name}"
-
-        # Complete event
-        elif [ "$event_type" = "complete" ] || [ "$status" = "completed" ]; then
-            if $showing_progress; then
-                end_progress
-                showing_progress=false
-            fi
-
-        # Error event
-        elif [ "$event_type" = "error" ] || [ "$status" = "error" ]; then
-            if $showing_progress; then
-                end_progress
-                showing_progress=false
-            fi
-            [ -n "$message" ] && echo -e "${RED}${message}${NC}"
-
-        # Status messages (skip "Downloading..." since bar shows it)
-        elif [ -n "$message" ]; then
-            case "$message" in
-                [Dd]ownloading*) ;;
-                *)
-                    if $showing_progress; then
-                        end_progress
-                        showing_progress=false
-                    fi
-                    echo -e "${MUTED}${message}${NC}"
-                    ;;
-            esac
-        fi
-
-        event_type=""
-    done
-
-    printf "\033[?25h"
-}
-
 install_smartloop() {
     echo -e "${MUTED}Reading package lists...${NC} "
     detect_platform
@@ -558,8 +448,29 @@ install_smartloop() {
         setup_launchd_service
     fi
 
-    # Bootstrap the model via the SSE API so we can show download progress
-    bootstrap_model
+    # Confirm the background service started
+    local port_file="${BASE_DIR}/server.port"
+    local port=8000
+    if [ -f "$port_file" ]; then
+        port="$(cat "$port_file")"
+    fi
+
+    local attempts=0
+    while [ $attempts -lt 15 ]; do
+        if curl -sf "http://127.0.0.1:${port}/health" >/dev/null 2>&1; then
+            echo -e "${GREEN}Service started${NC}"
+            break
+        fi
+        if [ -f "$port_file" ]; then
+            port="$(cat "$port_file")"
+        fi
+        sleep 1
+        attempts=$((attempts + 1))
+    done
+
+    if [ $attempts -ge 15 ]; then
+        echo -e "${RED}Service did not start in time. Run 'slp status' to check.${NC}"
+    fi
 
     print_banner
 }
