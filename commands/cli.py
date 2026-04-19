@@ -103,21 +103,17 @@ def main():
     init_parser = subparsers.add_parser("init", help="Initialize a model")
     init_parser.add_argument(
         "--model", "-m", nargs="?",
-        help="Model name to use (default: $SLP_BASE_MODEL_NAME or gemma3_it_text)",
+        help="Model name to use (default: $SLP_BASE_MODEL_NAME or gemma3-1b)",
         default=None
     )
     init_parser.add_argument(
         "--developer-token", "-t",
         help="Smartloop developer token to download model (falls back to SLP_DEVELOPER_TOKEN in .env)",
     )
-    init_parser.add_argument(
-        "--hf",
-        help="Hugging Face token for downloading models from Hugging Face Hub",
-    )
 
     # Run command
     run_parser = subparsers.add_parser("run", help="Run interactive chat with the model")
-    run_parser.add_argument("--model", "-m", help="Model name (default: $SLP_BASE_MODEL_NAME or gemma3_it_text)")
+    run_parser.add_argument("--model", "-m", help="Model name (default: $SLP_BASE_MODEL_NAME or gemma3-1b)")
     run_parser.add_argument("--project-name", help="Project name (default: $SLP_PROJECT_NAME)")
     run_parser.add_argument("--host", help="API server host (default: $API_HOST or 127.0.0.1)")
     run_parser.add_argument("--port", "-p", type=int, help="API server port (default: $API_PORT or 8000)")

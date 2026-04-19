@@ -96,8 +96,6 @@ class InitCommand(Command):
             payload["model_name"] = m
         if self.developer_token:
             payload["developer_token"] = self.developer_token
-        if hf := getattr(self.args, "hf", None):
-            payload["hf_token"] = hf
         try:
             with requests.post(
                 f"{self._base_url()}/v1/init",
