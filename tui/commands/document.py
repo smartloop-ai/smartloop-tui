@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import httpx
@@ -11,6 +10,7 @@ from textual import work
 from textual.containers import VerticalScroll
 from textual.widgets import Static
 
+from tui.theme import SLP_PRIMARY
 
 class Document:
     """Command handler for _handle_document_command and all _document_* helpers."""
@@ -45,36 +45,19 @@ class Document:
         """Add a document to the project."""
         self._set_loading("Processing document...")
         try:
-            documents: list[dict] = []
-            event_type: str | None = None
             async with httpx.AsyncClient(timeout=300) as client:
-                async with client.stream(
-                    "POST",
+                resp = await client.post(
                     f"{self.server_url}/v1/projects/{self.project_id}/documents",
                     json={"source": source},
-                ) as resp:
-                    resp.raise_for_status()
-                    async for line in resp.aiter_lines():
-                        if not line:
-                            event_type = None
-                            continue
-                        if line.startswith("event:"):
-                            event_type = line[len("event:"):].strip()
-                        elif line.startswith("data:"):
-                            payload = json.loads(line[len("data:"):].strip())
-                            if event_type == "progress":
-                                stage = payload.get("stage", "processing")
-                                filename = payload.get("filename", "")
-                                label = stage.capitalize()
-                                if filename:
-                                    label += f": {filename}"
-                                self._set_loading(label)
-                            elif event_type == "complete":
-                                documents = payload.get("documents", [])
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                documents = data.get("documents", [])
             if documents:
                 for doc in documents:
                     name = Path(doc["path"]).name
                     self._append_system(f"Added: {name} (id={doc['id']})")
+                self._append_system("Use /document list to check processing status.")
             else:
                 self._append_system("No new documents added (may already exist)")
         except httpx.HTTPStatusError as e:
@@ -102,8 +85,10 @@ class Document:
             table = Table(style="#6b5b7b")
             table.add_column("#", style="dim", width=3)
             table.add_column("Name")
+            table.add_column("Status")
             for i, doc in enumerate(docs, 1):
-                table.add_row(str(i), Path(doc["path"]).name)
+                status = doc.get("status", "pending")
+                table.add_row(str(i), Path(doc["path"]).name, f"{status.capitalize()}")
             log = self.query_one("#chat-log", VerticalScroll)
             log.mount(Static(table, classes="system-msg"))
             log.scroll_end(animate=False)

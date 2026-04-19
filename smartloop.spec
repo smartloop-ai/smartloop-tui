@@ -182,7 +182,7 @@ a = Analysis(
     ],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=['hooks/rthook_utf8.py', 'hooks/rthook_chroma_telemetry.py'],
+    runtime_hooks=['hooks/rthook_utf8.py', 'hooks/rthook_chroma_telemetry.py', 'hooks/rthook_frozen_probe.py'],
     excludes=[
         '.venv',
         'venv',

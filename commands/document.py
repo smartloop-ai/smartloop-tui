@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import requests
@@ -35,17 +34,19 @@ class DocumentCommand(Command):
             console.print("[red]No current project. Create or switch to a project first.[/red]")
             return
         try:
-            with console.status("[bold cyan]Processing document...", spinner="dots") as status:
+            with console.status("[bold cyan]Processing document...", spinner="dots"):
                 resp = requests.post(
                     f"{self._base_url()}/v1/projects/{project_id}/documents",
                     json={"source": self.args.file_path},
                     timeout=300,
-                    stream=True,
                 )
                 resp.raise_for_status()
-                documents = self._consume_sse(resp, status)
+                data = resp.json()
+                documents = data.get("documents", [])
             for doc in documents:
                 console.print(f"[{SLP_PRIMARY}]Added: {Path(doc['path']).name} (id={doc['id']})[/{SLP_PRIMARY}]")
+            if documents:
+                console.print("[dim]Use /document list to check processing status.[/dim]")
             if not documents:
                 console.print("[yellow]No new documents added (may already exist)[/yellow]")
         except requests.HTTPError as e:
@@ -53,33 +54,6 @@ class DocumentCommand(Command):
             console.print(f"[red]{detail}[/red]")
         except RequestException as e:
             console.print(f"[red]API Error: {e}[/red]")
-
-    @staticmethod
-    def _consume_sse(resp: requests.Response, status) -> list[dict]:
-        """Parse an SSE stream from the document upload endpoint.
-
-        Returns the list of documents from the final ``complete`` event.
-        """
-        event_type: str | None = None
-        documents: list[dict] = []
-        for line in resp.iter_lines(decode_unicode=True):
-            if not line:
-                event_type = None
-                continue
-            if line.startswith("event:"):
-                event_type = line[len("event:"):].strip()
-            elif line.startswith("data:"):
-                payload = json.loads(line[len("data:"):].strip())
-                if event_type == "progress":
-                    stage = payload.get("stage", "processing")
-                    filename = payload.get("filename", "")
-                    label = f"[bold cyan]{stage.capitalize()}"
-                    if filename:
-                        label += f": {filename}"
-                    status.update(label)
-                elif event_type == "complete":
-                    documents = payload.get("documents", [])
-        return documents
 
     def delete(self) -> None:
         """Delete a document by ID."""
