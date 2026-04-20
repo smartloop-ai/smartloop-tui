@@ -32,7 +32,7 @@ else
 endif
 
 # Read version from installed smartloop package
-VERSION := $(shell $(PYTHON) -c "from smartloop import __version__; print(__version__)" 2>/dev/null)
+VERSION := $(shell $(PYTHON) -c "from importlib.metadata import version; print(version('slp'))" 2>/dev/null)
 DIST_DIR := dist/slp
 ARCHIVE_NAME := slp.tar.gz
 
@@ -118,6 +118,8 @@ clean:
 build-binary: venv
 	@echo "=== Installing PyInstaller ==="
 	$(PIP) install pyinstaller --index-url=https://pypi.org/simple --no-cache-dir
+	@echo "=== Re-installing smartloop (non-editable for PyInstaller) ==="
+	$(PIP) install --no-build-isolation --no-deps . --index-url=https://pypi.org/simple --no-cache-dir
 	@echo "=== Building v$(VERSION) for $(PLATFORM)/$(ARCH) ==="
 	$(PYTHON) -m PyInstaller --noconfirm smartloop.spec
 	@echo "Build complete: $(DIST_DIR)/slp"
@@ -162,8 +164,10 @@ archive:
 pack: build
 	@echo "=== Installing PyInstaller ==="
 	$(PIP) install pyinstaller --index-url=https://pypi.org/simple --force-reinstall --no-cache-dir
+	@echo "=== Re-installing smartloop (non-editable for PyInstaller) ==="
+	$(PIP) install --no-build-isolation --no-deps . --index-url=https://pypi.org/simple --no-cache-dir
 	@echo "=== Building binary ==="
-	$(PYTHON) -m PyInstaller smartloop.spec
+	$(PYTHON) -m PyInstaller --noconfirm smartloop.spec
 	@echo "Build complete: $(DIST_DIR)/slp"
 
 release: pack sign notarize archive

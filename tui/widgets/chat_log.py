@@ -6,7 +6,7 @@ from rich.table import Table
 from textual.containers import VerticalScroll
 from textual.widgets import Static
 
-from smartloop import __version__
+from version import __version__
 from smartloop.constants import LOGO
 
 from tui.constants import SLASH_COMMANDS

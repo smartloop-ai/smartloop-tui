@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "slp"
-dynamic = ["version"]
+version = "1.0.0"
 description = "Smartloop SLM framework for inferencing and tuning models on edge devices"
 requires-python = ">=3.10"
 dependencies = [
@@ -29,5 +29,3 @@ include = ["commands*", "tui*"]
 [tool.setuptools.package-data]
 tui = ["css/*.tcss", "css/*.css"]
 
-[tool.setuptools.dynamic]
-version = {attr = "smartloop.__version__"}

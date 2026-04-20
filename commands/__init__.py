@@ -1,5 +1,7 @@
 """CLI command classes."""
 
+from version import __version__
+
 from .base import Command
 from .init import InitCommand
 from .document import DocumentCommand
@@ -10,6 +12,9 @@ from .token import TokenCommand
 from .mcp import McpCommand
 from .server import ServerCommand
 from .projects import ProjectsCommand
+from .console import settings
+
+settings.version = __version__
 
 __all__ = [
     "Command",

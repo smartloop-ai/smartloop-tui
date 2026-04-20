@@ -9,11 +9,17 @@ datas = []
 binaries = []
 hiddenimports = []
 
-# Collect all smartloop submodules from site-packages (not the local stub)
+# Collect all smartloop submodules, data files, and binaries
+_tmp_ret = collect_all('smartloop')
+datas += _tmp_ret[0]
+binaries += _tmp_ret[1]
+hiddenimports += _tmp_ret[2]
+
+# Ensure smartloop/skills is bundled (collect_all may miss it)
 for sp in site.getsitepackages():
-    _smartloop_dir = Path(sp) / 'smartloop'
-    if _smartloop_dir.exists():
-        datas.append((str(_smartloop_dir), 'smartloop'))
+    _skills_dir = Path(sp) / 'smartloop' / 'skills'
+    if _skills_dir.exists():
+        datas.append((str(_skills_dir), 'smartloop/skills'))
         break
 
 # Include package metadata required at runtime (importlib.metadata lookups)
@@ -145,7 +151,6 @@ a = Analysis(
     datas=datas,
     hiddenimports=hiddenimports + [
         'certifi',
-        'json_repair',
         'llama_cpp',
         'llama_cpp.llama_cpp',
         'llama_cpp._ctypes_extensions',

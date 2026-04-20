@@ -38,7 +38,7 @@ class Command:
                 self.port = port
                 return True
 
-        from smartloop import __version__
+        from version import __version__
         print_logo(version=__version__, console=console)
 
         try:
