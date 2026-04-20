@@ -11,7 +11,7 @@ import os
 import certifi
 import multiprocessing
 
-from smartloop import __version__
+from version import __version__
 from smartloop.auth import credential_store
 from smartloop.server import read_port_file
 

@@ -15,7 +15,7 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.keys import Keys
 from requests.exceptions import RequestException
 
-from smartloop import __version__
+from version import __version__
 from smartloop.constants import SLP_PRIMARY
 from smartloop.server import is_server_running
 
