@@ -1,0 +1,57 @@
+name: Bump Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'New version (e.g. 1.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update version files
+        run: |
+          VERSION="${{ inputs.version }}"
+          sed -i "s/^__version__ = .*/__version__ = \"${VERSION}\"/" version.py
+          sed -i "s/^version = .*/version = \"${VERSION}\"/" pyproject.toml
+          echo "Updated to v${VERSION}"
+          cat version.py
+          grep '^version' pyproject.toml
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No version change — already at ${{ inputs.version }}"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create pull request
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ inputs.version }}"
+          BRANCH="release/v${VERSION}"
+          git checkout -b "$BRANCH"
+          git add version.py pyproject.toml
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "Bump version to ${VERSION}"
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "Release v${VERSION}" \
+            --body "Bumps version to \`${VERSION}\` in \`version.py\` and \`pyproject.toml\`." \
+            --base main \
+            --head "$BRANCH"
