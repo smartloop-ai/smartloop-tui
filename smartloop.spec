@@ -145,6 +145,7 @@ a = Analysis(
     datas=datas,
     hiddenimports=hiddenimports + [
         'certifi',
+        'json_repair',
         'llama_cpp',
         'llama_cpp.llama_cpp',
         'llama_cpp._ctypes_extensions',
