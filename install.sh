@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-VERSION="1.0.1"
+VERSION="1.0.2"
 BASE_URL="https://github.com/smartloop-ai/smartloop/releases/download/v${VERSION}"
 BASE_DIR="$HOME/.smartloop"
 INSTALL_DIR="${BASE_DIR}/${VERSION}"
