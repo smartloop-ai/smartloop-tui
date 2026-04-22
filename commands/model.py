@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import json
+import sys
 
 import requests
 from prettytable import PrettyTable
 from requests.exceptions import RequestException
-from tqdm import tqdm
 
 from smartloop.server import is_server_running, read_pid_file
 
@@ -98,7 +98,7 @@ class ModelCommand(Command):
             return
 
         payload = {"mode": "train", "project_id": project_id}
-        self._stream_model_load(payload, desc="Training")
+        self._stream_model_load(payload)
 
     def build(self) -> None:
         """Convert the model to GGUF format."""
@@ -114,9 +114,9 @@ class ModelCommand(Command):
         quantize = getattr(self.args, "quantize", None)
         if quantize:
             payload["quantize"] = quantize
-        self._stream_model_load(payload, desc="Building")
+        self._stream_model_load(payload)
 
-    def _stream_model_load(self, payload: dict, desc: str = "Processing") -> None:
+    def _stream_model_load(self, payload: dict) -> None:
         """POST to /v1/models/load and stream SSE progress."""
         try:
             with requests.post(
@@ -133,7 +133,6 @@ class ModelCommand(Command):
                     console.print(f"[red]{detail}[/red]")
                     return
 
-                progress_bar = None
                 for raw in resp.iter_lines():
                     if not raw:
                         continue
@@ -145,39 +144,15 @@ class ModelCommand(Command):
                     except json.JSONDecodeError:
                         continue
 
-                    stage = data.get("stage", "")
-                    current = data.get("current", 0)
-                    total = data.get("total", 0)
-                    message = data.get("message", "")
+                    msg = data.get("message", "")
+                    status = data.get("status")
 
-                    if total and current is not None:
-                        if progress_bar is None:
-                            progress_bar = tqdm(
-                                total=total, desc=stage or desc,
-                                dynamic_ncols=True,
-                            )
-                        elif stage and progress_bar.desc != stage:
-                            progress_bar.reset(total=total)
-                            progress_bar.set_description(stage)
-                        progress_bar.n = current
-                        progress_bar.refresh()
-                    elif stage == "complete" or stage == "completed":
-                        if progress_bar is not None:
-                            progress_bar.n = progress_bar.total
-                            progress_bar.refresh()
-                            progress_bar.close()
-                            progress_bar = None
-                        console.print(f"[cyan][+] {message or f'{desc} complete'}[/cyan]")
-                    elif stage == "error":
-                        if progress_bar is not None:
-                            progress_bar.close()
-                            progress_bar = None
-                        console.print(f"[red]{message}[/red]")
-                    else:
-                        if message:
-                            console.print(f"[dim]{message}[/dim]")
-
-                if progress_bar is not None:
-                    progress_bar.close()
+                    if status == "error":
+                        console.print(f"[red]{msg}[/red]")
+                        sys.exit(1)
+                    elif status == "completed":
+                        console.print(f"[green]{msg}[/green]")
+                    elif msg:
+                        console.print(msg)
         except RequestException as e:
             console.print(f"[red]API Error: {e}[/red]")
