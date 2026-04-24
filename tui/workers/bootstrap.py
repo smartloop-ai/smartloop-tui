@@ -48,7 +48,7 @@ class Bootstrap:
         ratio = min(downloaded / total, 1.0)
         filled = int(ratio * width)
         empty = width - filled
-        return f"[#ec4899]{'█' * filled}[/#ec4899][#272036]{'█' * empty}[/#272036]"
+        return f"[#ec4899]{'█' * filled}[/#ec4899][#21262d]{'█' * empty}[/#21262d]"
 
     @work(exclusive=True)
     async def _run_bootstrap(self) -> None:
@@ -87,7 +87,7 @@ class Bootstrap:
                                 pct = (dl / total * 100) if total else 0
                                 bar = self._render_block_bar(dl, total)
                                 progress_widget.update(
-                                    f"{bar} [#6b5b7b]{pct:3.0f}%[/#6b5b7b]"
+                                    f"{bar} [#8b949e]{pct:3.0f}%[/#8b949e]"
                                 )
                                 friendly_fn = self._friendly_filename(fn)
                                 download_label.update(

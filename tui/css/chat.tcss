@@ -1,11 +1,11 @@
  Screen {
-        background: #0f0a1a;
+        background: #0d1117;
     }
 
     #chat-log {
         height: 1fr;
         padding: 1 2;
-        background: #0f0a1a;
+        background: #0d1117;
     }
 
     #prompt-wrapper {
@@ -23,7 +23,7 @@
         border-top: none;
         border-right: none;
         border-bottom: none;
-        background: #1c1528;
+        background: #161b22;
         border-left:#ec4899;
     }
 
@@ -34,7 +34,7 @@
         padding-bottom: 1;
         border: none;
         background: transparent;
-        color: #e2d9f3;
+        color: #e6edf3;
     }
 
     #prompt-box:focus {
@@ -44,7 +44,7 @@
     #status-bar {
         height: auto;
         background: transparent;
-        color: #6b5b7b;
+        color: #8b949e;
         padding: 1 0;
     }
 
@@ -60,7 +60,7 @@
         height: 1;
         margin: 0 1 0 0;
         padding: 0 1;
-        background: #272036;
+        background: #21262d;
         layout: horizontal;
         align: left middle;
     }
@@ -81,7 +81,7 @@
     #shortcut-bar {
         height: 1;
         background: transparent;
-        color: #6b5b7b;
+        color: #8b949e;
         padding: 0 2;
         layout: horizontal;
     }
@@ -95,67 +95,67 @@
         width: 1fr;
         height: 1;
         text-align: right;
-        color: #6b5b7b;
+        color: #8b949e;
     }
 
     .badge-group.green .badge-icon,
     .badge-group.green .badge-text {
-        color: #34d399;
+        color: #3fb950;
     }
 
     .badge-group.pink .badge-icon,
     .badge-group.pink .badge-text {
-        color: #f9a8d4;
+        color: #ec4899;
     }
 
     .badge-group.muted .badge-icon,
     .badge-group.muted .badge-text {
-        color: #6b5b7b;
+        color: #8b949e;
     }
 
     .badge-group.red .badge-icon,
     .badge-group.red .badge-text {
-        color: #f87171;
+        color: #f85149;
     }
 
     .user-msg {
         margin: 1 0 0 0;
         padding: 1 2;
-        background: #1c1528;
-        border: round #272036;
-        color: #e2d9f3;
+        background: #161b22;
+        border: round #30363d;
+        color: #e6edf3;
     }
 
     .assistant-msg {
         margin: 0 0 1 0;
         padding: 1 2;
-        background: #191225;
-        color: #d1c4e9;
+        background: #151b23;
+        color: #c9d1d9;
         link-color: #ec4899;
         link-style: underline;
         link-color-hover: #f9a8d4;
         link-style-hover: bold underline;
-        link-background-hover: #272036;
+        link-background-hover: #21262d;
     }
 
     .system-msg {
         margin: 1 0;
-        color: #6b5b7b;
+        color: #8b949e;
     }
 
     .metrics-msg {
-        color: #4a3d5c;
+        color: #484f58;
         margin: 0 0 1 0;
     }
 
     .bootstrap-status {
         margin: 0 0;
-        color: #6b5b7b;
+        color: #8b949e;
     }
 
     .bootstrap-progress {
         margin: 1 0 0 0;
-        color: #6b5b7b;
+        color: #8b949e;
     }
 
     ToastRack {
@@ -164,7 +164,7 @@
 
     Toast {
         width: auto;
-        background: #1c1528;
-        color: #e2d9f3;
+        background: #161b22;
+        color: #e6edf3;
         border-left: outer #ec4899;
     }

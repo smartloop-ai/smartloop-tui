@@ -16,7 +16,7 @@ from textual.widgets import Static
 from tui.constants import LOADING_MESSAGES
 from tui.events import SSEDone, SSEStatus, SSEUsage, SSEContent, parse_sse_stream
 from tui.markdown import markdown_to_markup
-from tui.theme import SLP_DARK
+from tui.theme import Theme as theme
 from tui.widgets.selectable_static import SelectableStatic
 from tui.widgets import PromptTextArea
 
@@ -39,7 +39,7 @@ class Streaming:
     async def _stream_response(self, user_input: str) -> None:
         # Check server connectivity before sending
         if not await self._check_connected():
-            secondary_color = SLP_DARK.secondary.hex
+            secondary_color = theme.COLOR_SYSTEM.secondary.hex
             self._append_system(
                 f"[{secondary_color}]!! Service is disconnected / crashed, "
                 f"please wait for it to restart!![/{secondary_color}]"
@@ -118,7 +118,7 @@ class Streaming:
                                 reply_widget.update(RichText(accumulated))
                                 try:
                                     self.query_one("#cost-badge", Static).update(
-                                        f"[#6b5b7b]{self._context_used:,}[/#6b5b7b] [dim]token(s) processed[/dim]"
+                                        f"[#8b949e]{self._context_used:,}[/#8b949e] [dim]token(s) processed[/dim]"
                                     )
                                 except Exception:
                                     pass

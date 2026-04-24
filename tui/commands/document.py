@@ -82,7 +82,7 @@ class Document:
             if not docs:
                 self._append_system("No documents in project")
                 return
-            table = Table(style="#6b5b7b")
+            table = Table(style="#8b949e")
             table.add_column("#", style="dim", width=3)
             table.add_column("Name")
             table.add_column("Status")

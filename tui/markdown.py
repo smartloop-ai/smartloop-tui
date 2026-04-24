@@ -51,7 +51,7 @@ def _render_tokens(tokens: list) -> str:
             elif level == 2:
                 parts.append(f"\n[bold #f9a8d4]{inner}[/]\n")
             else:
-                parts.append(f"\n[bold #d1c4e9]{inner}[/]\n")
+                parts.append(f"\n[bold #c9d1d9]{inner}[/]\n")
             i += 3  # heading_open, inline, heading_close
             continue
 
@@ -66,15 +66,15 @@ def _render_tokens(tokens: list) -> str:
             lang = tok.info.strip() if tok.info else ""
             code = _escape(tok.content.rstrip("\n"))
             if lang:
-                parts.append(f"\n[#6b5b7b]{_escape(lang)}[/]\n[on #1a1428]{code}[/on #1a1428]\n")
+                parts.append(f"\n[#8b949e]{_escape(lang)}[/]\n[on #161b22]{code}[/on #161b22]\n")
             else:
-                parts.append(f"\n[on #1a1428]{code}[/on #1a1428]\n")
+                parts.append(f"\n[on #161b22]{code}[/on #161b22]\n")
             i += 1
             continue
 
         if tok.type == "code_block":
             code = _escape(tok.content.rstrip("\n"))
-            parts.append(f"\n[on #1a1428]{code}[/on #1a1428]\n")
+            parts.append(f"\n[on #161b22]{code}[/on #161b22]\n")
             i += 1
             continue
 
@@ -97,7 +97,7 @@ def _render_tokens(tokens: list) -> str:
             continue
 
         if tok.type == "hr":
-            parts.append("[#272036]─────────────────────────────────────────[/]\n")
+            parts.append("[#30363d]─────────────────────────────────────────[/]\n")
             i += 1
             continue
 
@@ -119,7 +119,7 @@ def _render_inline(children: list) -> str:
                 escaped = _linkify(escaped)
             parts.append(escaped)
         elif tok.type == "code_inline":
-            parts.append(f"[bold #f9a8d4 on #1a1428] {_escape(tok.content)} [/]")
+            parts.append(f"[bold #f9a8d4 on #161b22] {_escape(tok.content)} [/]")
         elif tok.type == "strong_open":
             parts.append("[bold]")
         elif tok.type == "strong_close":
@@ -219,7 +219,7 @@ def _collect_blockquote(tokens: list, start: int) -> tuple[str, int]:
     inner = _render_tokens(inner_tokens)
     # Prefix each line with quote bar
     lines = inner.rstrip("\n").split("\n")
-    quoted = "\n".join(f"[#6b5b7b]│ {line}[/]" for line in lines)
+    quoted = "\n".join(f"[#8b949e]│ {line}[/]" for line in lines)
     return quoted + "\n", i
 
 

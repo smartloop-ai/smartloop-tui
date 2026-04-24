@@ -44,13 +44,13 @@ class ModelInfo:
 
             table = Table(
                 show_header=True,
-                border_style="#272036",
-                style="#6b5b7b",
+                border_style="#30363d",
+                style="#8b949e",
                 expand=False,
                 pad_edge=True,
                 padding=(0, 1),
             )
-            table.add_column("Property", style="#6b5b7b", no_wrap=True)
+            table.add_column("Property", style="#8b949e", no_wrap=True)
             table.add_column("Value", style="#f9a8d4")
             table.add_row("Model", str(model_name))
             table.add_row("Quantization", str(quant))
