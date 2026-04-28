@@ -155,7 +155,7 @@ class MCP:
             if not servers:
                 self._append_system("No MCP servers registered")
                 return
-            table = Table(style="#6b5b7b")
+            table = Table(style="#8b949e")
             table.add_column("#", style="dim", width=3)
             table.add_column("Name")
             table.add_column("Type")

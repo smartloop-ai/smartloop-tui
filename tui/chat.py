@@ -13,7 +13,7 @@ from textual.widgets import Static, OptionList, TextArea
 from textual.widgets.text_area import TextAreaTheme
 
 from smartloop.model_factory import SUPPORTED_MODELS
-from tui.theme import SLP_DARK
+from tui.theme import Theme as theme
 from tui.widgets import CommandMenu, PromptTextArea, ChatLog
 from tui.workers import Connection, Bootstrap, Streaming
 from tui.commands import (
@@ -90,7 +90,7 @@ class SLPChat(
     def get_css_variables(self) -> dict[str, str]:
         """Override theme colors with Smartloop dark-pink palette."""
         variables = super().get_css_variables()
-        variables.update(SLP_DARK.generate())
+        variables.update(theme.COLOR_SYSTEM.generate())
         return variables
 
     def compose(self) -> ComposeResult:
@@ -110,8 +110,8 @@ class SLPChat(
         prompt.show_line_numbers = False
         prompt.register_theme(TextAreaTheme(
             name="smartloop",
-            base_style=Style(color="#e2d9f3"),
-            cursor_style=Style(color="#0f0a1a", bgcolor="#e2d9f3"),
+            base_style=Style(color=theme.TEXT),
+            cursor_style=Style(color=theme.BG, bgcolor=theme.TEXT),
             cursor_line_style=Style.null(),
             cursor_line_gutter_style=Style.null(),
             gutter_style=Style.null(),
@@ -166,7 +166,7 @@ class SLPChat(
 
     def _shortcut_text(self) -> str:
         """Return the shortcut hint text based on current state."""
-        return "[#6b5b7b]<esc>[/#6b5b7b] [#4a3d5c]interrupt[/#4a3d5c]  [#6b5b7b]<ctrl+j>[/#6b5b7b] [#4a3d5c]new line[/#4a3d5c]"
+        return f"[{theme.TEXT_MUTED}]<esc>[/{theme.TEXT_MUTED}] [{theme.TEXT_DIM}]interrupt[/{theme.TEXT_DIM}]  [{theme.TEXT_MUTED}]<ctrl+j>[/{theme.TEXT_MUTED}] [{theme.TEXT_DIM}]new line[/{theme.TEXT_DIM}]"
 
     def _refresh_shortcut_bar(self) -> None:
         """Update the shortcut bar to reflect current state."""
@@ -191,7 +191,7 @@ class SLPChat(
 
         try:
             self.query_one("#cost-badge", Static).update(
-                f"[#6b5b7b]{self._context_used:,}[/#6b5b7b] [dim]token(s) processed[/dim]"
+                f"[{theme.TEXT_MUTED}]{self._context_used:,}[/{theme.TEXT_MUTED}] [dim]token(s) processed[/dim]"
             )
         except Exception:
             pass

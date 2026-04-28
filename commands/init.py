@@ -140,6 +140,7 @@ class InitCommand(Command):
 
         showing_progress = False
         current_event_type: str | None = None
+        current_filename: str | None = None
 
         for raw in resp.iter_lines():
             if not raw:
@@ -168,14 +169,20 @@ class InitCommand(Command):
                 downloaded = data["downloaded"]
                 filename = data.get("filename", "model")
                 if total:
+                    if showing_progress and filename != current_filename:
+                        _clear_progress()
+                        console.print(f"[cyan][+] Downloaded {current_filename}[/cyan]")
                     showing_progress = True
+                    current_filename = filename
                     _render_progress(filename, downloaded, total)
 
             # Complete event
             elif event_type == "complete" or status == "completed":
                 if showing_progress:
                     _clear_progress()
+                    console.print(f"[cyan][+] Downloaded {current_filename}[/cyan]")
                     showing_progress = False
+                    current_filename = None
                 console.print(f"[cyan][+] {msg}[/cyan]")
 
             # Project created
@@ -191,6 +198,7 @@ class InitCommand(Command):
                 if showing_progress:
                     _clear_progress()
                     showing_progress = False
+                    current_filename = None
                 console.print(f"[red]{msg}[/red]")
 
             # Status messages — skip "Downloading..." since the progress bar
@@ -200,9 +208,12 @@ class InitCommand(Command):
                     if showing_progress:
                         _clear_progress()
                         showing_progress = False
+                        current_filename = None
                     console.print(f"[dim]{msg}[/dim]")
 
             current_event_type = None
 
         if showing_progress:
             _clear_progress()
+            if current_filename:
+                console.print(f"[cyan][+] Downloaded {current_filename}[/cyan]")

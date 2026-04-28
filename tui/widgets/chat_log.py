@@ -10,6 +10,7 @@ from version import __version__
 from smartloop.constants import LOGO
 
 from tui.constants import SLASH_COMMANDS
+from tui.theme import Theme as theme
 from tui.widgets.selectable_static import SelectableStatic
 
 
@@ -34,7 +35,7 @@ class ChatLog:
         log = self.query_one("#chat-log", VerticalScroll)
         lines = []
         if self.project_rules:
-            lines.append("[#ec4899]Skills:[/#ec4899]")
+            lines.append(f"[{theme.ACCENT}]Skills:[/{theme.ACCENT}]")
             for rule in self.project_rules.strip().splitlines():
                 lines.append(f"  [dim]{rule}[/dim]")
             lines.append("")
@@ -44,19 +45,19 @@ class ChatLog:
     def _show_help(self) -> None:
         """Show logo, version, and the full commands table in the chat log."""
         log = self.query_one("#chat-log", VerticalScroll)
-        header = f"[bold #ec4899]{LOGO}[/bold #ec4899]\n[#4a3d5c]v{__version__}[/#4a3d5c]\n"
+        header = f"[bold {theme.ACCENT}]{LOGO}[/bold {theme.ACCENT}]\n[{theme.TEXT_DIM}]v{__version__}[/{theme.TEXT_DIM}]\n"
         log.mount(Static(header, classes="system-msg"))
         commands_table = Table(
             show_header=True,
-            header_style="#ec4899",
-            border_style="#272036",
-            style="#6b5b7b",
+            header_style=theme.ACCENT,
+            border_style=theme.BORDER,
+            style=theme.TEXT_MUTED,
             expand=False,
             pad_edge=True,
             padding=(0, 1),
             show_lines=True,
         )
-        commands_table.add_column("Command", style="#f9a8d4", no_wrap=True)
+        commands_table.add_column("Command", style=theme.ACCENT_LIGHT, no_wrap=True)
         commands_table.add_column("Description", style="dim")
         for cmd, desc in SLASH_COMMANDS:
             commands_table.add_row(cmd, desc)
@@ -65,10 +66,10 @@ class ChatLog:
 
     def _show_command_guide(self, log: VerticalScroll) -> None:
         """Show a friendly getting-started guide after bootstrap completes."""
-        c = "#f9a8d4"  # command highlight
-        d = "#6b5b7b"  # description text
-        b = "#272036"  # border / muted
-        h = "#ec4899"  # heading
+        c = theme.ACCENT_LIGHT
+        d = theme.TEXT_MUTED
+        b = theme.BORDER
+        h = theme.ACCENT
 
         lines = [
             f"[{b}]{'─' * 60}[/{b}]",

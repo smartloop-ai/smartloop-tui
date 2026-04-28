@@ -123,6 +123,14 @@ def main():
     # Status command
     subparsers.add_parser("status", help="Show project status")
 
+    # Build command
+    build_parser = subparsers.add_parser("build", help="Convert the model to GGUF format")
+    build_parser.add_argument("--quantize", "-q", default="q4_k_m",
+                              help="Quantization method for GGUF conversion (default: q4_k_m)")
+
+    # Train command
+    subparsers.add_parser("train", help="Fine-tune the model with LoRA on project documents")
+
     # Server management commands
     server_parser = subparsers.add_parser("server", help="Server management commands")
     server_subparsers = server_parser.add_subparsers(dest="server_command", help="Server commands")

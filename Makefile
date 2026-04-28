@@ -80,18 +80,19 @@ venv:
 	fi
 
 build: venv
-	@echo "=== Installing dependencies ==="
-	$(PIP) install setuptools wheel --index-url=https://pypi.org/simple
+	@echo "=== Installing requirements ==="
 	$(PIP) install -r requirements.txt --index-url=https://pypi.org/simple
-	@echo "=== Installing llama-cpp-python ==="
+	@echo "=== Installing llama-cpp-python with GPU support ==="
 	$(LLAMA_INSTALL_CMD)
-	@echo "=== Installing slp CLI ==="
-	$(PIP) install --no-build-isolation --no-deps -e . --index-url=https://pypi.org/simple --no-cache-dir
+	@echo "=== Installing project in editable mode ==="
+	$(PIP) install -e . --index-url=https://pypi.org/simple
+	@echo "=== Installing PyInstaller ==="
+	$(PIP) install pyinstaller --index-url=https://pypi.org/simple
 ifeq ($(PLATFORM),windows)
-	@echo "Build complete"
+	@echo "=== Build complete ==="
 else
 	@ln -sf .venv/bin/slp slp
-	@echo "Build complete"
+	@echo "=== Build complete ==="
 endif
 
 test:

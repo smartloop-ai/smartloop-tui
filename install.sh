@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-VERSION="1.0.0"
+VERSION="1.0.1"
 BASE_URL="https://github.com/smartloop-ai/smartloop/releases/download/v${VERSION}"
 BASE_DIR="$HOME/.smartloop"
 INSTALL_DIR="${BASE_DIR}/${VERSION}"
@@ -229,8 +229,15 @@ setup_path() {
 
     add_to_path "$config_file" "$path_command"
 
-    # Make slp available in the current session immediately
-    export PATH="${BASE_DIR}:$PATH"
+    # Also ensure ~/.local/bin is in PATH (symlink target)
+    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+        local local_bin_command
+        case "$current_shell" in
+            fish) local_bin_command="fish_add_path $HOME/.local/bin" ;;
+            *)    local_bin_command="export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
+        esac
+        add_to_path "$config_file" "$local_bin_command"
+    fi
 }
 
 print_banner() {
@@ -240,10 +247,27 @@ print_banner() {
     echo -e ""
     echo -e "${MUTED}Version: ${NC}${VERSION}"
     echo -e ""
-    echo -e "${MUTED}To get started:${NC}"
-    echo -e ""
-    echo -e "  slp  ${MUTED}# Start the TUI${NC}"
-    echo -e "  slp status  ${MUTED}# Check if the server is running${NC}"
+
+    if command -v slp &>/dev/null; then
+        echo -e "${MUTED}To get started:${NC}"
+        echo -e ""
+        echo -e "  slp  ${MUTED}# Start the TUI${NC}"
+    else
+        echo -e "${MUTED}To get started, restart your terminal or run:${NC}"
+        echo -e ""
+        local current_shell
+        current_shell="$(basename "$SHELL")"
+        case "$current_shell" in
+            fish) echo -e "  source ~/.config/fish/config.fish" ;;
+            zsh)  echo -e "  source ${ZDOTDIR:-$HOME}/.zshrc" ;;
+            *)    echo -e "  source ~/.bashrc" ;;
+        esac
+        echo -e ""
+        echo -e "${MUTED}Then run:${NC}"
+        echo -e ""
+        echo -e "  slp  ${MUTED}# Start the TUI${NC}"
+    fi
+
     echo -e ""
     echo -e "${MUTED}For more information visit ${NC}https://smartloop.ai/docs/intro/"
     echo -e ""
@@ -426,19 +450,9 @@ install_smartloop() {
         # Symlink slp binary to base dir for PATH consistency
         ln -sf "${slp_bin}" "${BASE_DIR}/slp"
 
-        if [ -d "$HOME/.local/bin" ] && [ -w "$HOME/.local/bin" ]; then
-            ln -sf "${BASE_DIR}/slp" "$HOME/.local/bin/slp" 2>/dev/null || true
-        elif [ -w /usr/local/bin ]; then
-            ln -sf "${BASE_DIR}/slp" /usr/local/bin/slp 2>/dev/null || true
-        else
-            mkdir -p "$HOME/.local/bin"
-            ln -sf "${BASE_DIR}/slp" "$HOME/.local/bin/slp" 2>/dev/null || true
-            echo ""
-            echo -e "${GREEN}To use slp immediately, add to your shell config:${NC}"
-            echo -e "  ${BOLD}fish_add_path -g $HOME/.local/bin${NC}  # fish"
-            echo -e "  ${BOLD}export PATH=\"$HOME/.local/bin:\$PATH\"${NC}  # bash/zsh"
-            echo ""
-        fi
+        # Also symlink into ~/.local/bin — commonly in PATH on most distros
+        mkdir -p "$HOME/.local/bin"
+        ln -sf "${BASE_DIR}/slp" "$HOME/.local/bin/slp" 2>/dev/null || true
     fi
 
     echo -e "${MUTED}Processing triggers for smartloop (${VERSION}) ...${NC}"
