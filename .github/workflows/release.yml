@@ -1,4 +1,4 @@
-name: Release
+name: Bump Version
 
 on:
   workflow_dispatch:
@@ -44,12 +44,10 @@ jobs:
           sed -i "s/^__version__ = .*/__version__ = \"${VERSION}\"/" version.py
           sed -i "s/^version = .*/version = \"${VERSION}\"/" pyproject.toml
           sed -i "s/^VERSION=\".*\"/VERSION=\"${VERSION}\"/" install.sh
-          sed -i "s/^smartloop==.*/smartloop==${VERSION}/" requirements.txt
           echo "Updated to v${VERSION}"
           cat version.py
           grep '^version' pyproject.toml
           head -4 install.sh | tail -1
-          grep '^smartloop==' requirements.txt
 
       - name: Create pull request
         env:
@@ -58,7 +56,7 @@ jobs:
           VERSION="${{ steps.next.outputs.version }}"
           BRANCH="release/v${VERSION}"
           git checkout -b "$BRANCH"
-          git add version.py pyproject.toml install.sh requirements.txt
+          git add version.py pyproject.toml install.sh
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git commit -m "Bump version to ${VERSION}"
