@@ -24,7 +24,7 @@
         border-right: none;
         border-bottom: none;
         background: #161b22;
-        border-left:#ec4899;
+        border-left: tall #ec4899;
     }
 
     #prompt-box {
@@ -136,6 +136,14 @@
         link-color-hover: #f9a8d4;
         link-style-hover: bold underline;
         link-background-hover: #21262d;
+    }
+
+    .shell-msg {
+        margin: 1 0;
+        padding: 1 2;
+        background: #161b22;
+        color: #e6edf3;
+        border-left: tall #6e7681;
     }
 
     .system-msg {

@@ -3,10 +3,15 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Version to release (e.g. 1.0.1)'
+      bump:
+        description: 'Version bump type'
         required: true
-        type: string
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
 
 permissions:
   contents: write
@@ -18,9 +23,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Compute next version
+        id: next
+        run: |
+          CURRENT=$(python3 -c "exec(open('version.py').read()); print(__version__)")
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          case "${{ inputs.bump }}" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+          VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          echo "current=${CURRENT}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Bumping $CURRENT → $VERSION (${{ inputs.bump }})"
+
       - name: Update version files
         run: |
-          VERSION="${{ inputs.version }}"
+          VERSION="${{ steps.next.outputs.version }}"
           sed -i "s/^__version__ = .*/__version__ = \"${VERSION}\"/" version.py
           sed -i "s/^version = .*/version = \"${VERSION}\"/" pyproject.toml
           sed -i "s/^VERSION=\".*\"/VERSION=\"${VERSION}\"/" install.sh
@@ -31,22 +51,11 @@ jobs:
           head -4 install.sh | tail -1
           grep '^smartloop==' requirements.txt
 
-      - name: Check for changes
-        id: diff
-        run: |
-          if git diff --quiet; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "::error::Version is already ${VERSION}"
-            exit 1
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Create pull request
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="${{ inputs.version }}"
+          VERSION="${{ steps.next.outputs.version }}"
           BRANCH="release/v${VERSION}"
           git checkout -b "$BRANCH"
           git add version.py pyproject.toml install.sh requirements.txt
@@ -56,6 +65,6 @@ jobs:
           git push origin "$BRANCH"
           gh pr create \
             --title "Release v${VERSION}" \
-            --body "Bumps version to \`${VERSION}\` in \`version.py\`, \`pyproject.toml\`, \`install.sh\`, and \`requirements.txt\`." \
+            --body "Bumps version to \`${VERSION}\` (\`${{ inputs.bump }}\` bump from \`${{ steps.next.outputs.current }}\`)." \
             --base main \
             --head "$BRANCH"

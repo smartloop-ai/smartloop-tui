@@ -1,11 +1,13 @@
 """Textual TUI chat interface for SLP Framework."""
 
+import json
 import logging
 import os
 import uuid
 from pathlib import Path
 
 from rich.style import Style
+from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
@@ -211,6 +213,11 @@ class SLPChat(
             self._handle_input(content)
         else:
             ta.clear()
+        # Reset prompt border back to chat mode (pink)
+        try:
+            self.query_one("#prompt-container").styles.border_left = ("tall", theme.ACCENT)
+        except Exception:
+            pass
 
     def on_option_list_option_highlighted(self, event: OptionList.OptionHighlighted) -> None:
         """Prevent highlighted option from showing in the status bar."""
@@ -224,6 +231,12 @@ class SLPChat(
         if self._streaming or not self._bootstrap_done:
             return
         text = event.text_area.text
+        # Update prompt border colour based on mode
+        try:
+            container = self.query_one("#prompt-container")
+            container.styles.border_left = ("tall", theme.SECONDARY if text.startswith("!") else theme.ACCENT)
+        except Exception:
+            pass
         try:
             menu = self.query_one("#command-menu", CommandMenu)
         except Exception:
@@ -241,6 +254,13 @@ class SLPChat(
 
         if not self._bootstrap_done:
             self._append_system("Please wait for bootstrap to complete...")
+            return
+
+        if text.startswith("!"):
+            cmd = text[1:].strip()
+            if cmd:
+                self._append_user(text)
+                self._current_worker = self._run_shell_command(cmd)
             return
 
         if text.lower() in ("exit", "quit", "/exit"):
@@ -283,6 +303,42 @@ class SLPChat(
 
         self._append_user(text)
         self._current_worker = self._stream_response(text)
+
+    def _append_to_conversation(self, role: str, content: str) -> None:
+        """Write a message directly to the session JSONL conversation file."""
+        conv_dir = os.path.join(os.path.expanduser("~"), ".smartloop", "conversations")
+        os.makedirs(conv_dir, exist_ok=True)
+        path = os.path.join(conv_dir, f"{self.session_id}.jsonl")
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps({"role": role, "content": content, "message_id": None, "rating": None, "citations": None}) + "\n")
+
+    @work(exclusive=True)
+    async def _run_shell_command(self, cmd: str) -> None:
+        """Run a shell command, show output, and write it into the conversation history."""
+        import asyncio
+        self._set_loading(f"$ {cmd}")
+        try:
+            proc = await asyncio.create_subprocess_shell(
+                cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=os.path.expanduser(self.display_dir),
+            )
+            stdout, stderr = await proc.communicate()
+            output = stdout.decode(errors="replace")
+            err_output = stderr.decode(errors="replace")
+            combined = output
+            if err_output:
+                combined += err_output
+            display = combined.strip() if combined.strip() else f"(exit {proc.returncode})"
+            self._append_shell(display)
+            # Write command + output directly into the session conversation file
+            self._append_to_conversation("user", f"$ {cmd}")
+            self._append_to_conversation("assistant", f"```\n{display}\n```")
+        except Exception as exc:
+            self._append_system(f"[red]Error: {exc}[/red]")
+        finally:
+            self._clear_loading()
 
     def action_open_link(self, url: str) -> None:
         """Open a URL in the system browser."""

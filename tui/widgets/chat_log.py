@@ -30,6 +30,11 @@ class ChatLog:
         log.mount(SelectableStatic(text, copyable_text=text, classes="system-msg"))
         log.scroll_end(animate=False)
 
+    def _append_shell(self, text: str) -> None:
+        log = self.query_one("#chat-log", VerticalScroll)
+        log.mount(SelectableStatic(text, copyable_text=text, classes="shell-msg"))
+        log.scroll_end(animate=False)
+
     def _show_welcome(self) -> None:
         """Show project context at the top of the chat (minimal)."""
         log = self.query_one("#chat-log", VerticalScroll)
