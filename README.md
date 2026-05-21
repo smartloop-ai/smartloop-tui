@@ -7,7 +7,7 @@
     </picture>
   </a>
 </p>
-<p align="center">AI orchestration on your device — connect tools, build custom skills, and get things done without sending your data anywhere.</p>
+<p align="center">Local agent harness for your documents</p>
 <p align="center">
   <img src="https://img.shields.io/github/actions/workflow/status/smartloop-ai/smartloop-tui/release.yml"/>
 </p>
