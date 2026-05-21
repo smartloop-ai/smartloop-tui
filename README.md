@@ -7,12 +7,12 @@
     </picture>
   </a>
 </p>
-<p align="center">Local agent harness for your documents</p>
+<p align="center">Local agent harness for your documents. Extract information , generate content on your device</p>
 <p align="center">
   <img src="https://img.shields.io/github/actions/workflow/status/smartloop-ai/smartloop-tui/release.yml"/>
 </p>
 
-<img alt="Smartloop TUI Demo" src="demo.gif" />
+<img alt="Smartloop Demo" src="demo.gif" />
 
 ### Installation
 
